@@ -338,7 +338,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             "user",
             "name",
-            "phone",
             "accepted_terms",
             "avatar",
             "dob",

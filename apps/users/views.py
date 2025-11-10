@@ -1,4 +1,4 @@
-from .models import User, UserProfile
+from .models import User, Profile
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -35,7 +35,7 @@ class SignUpView(APIView):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return success(data=serializer.data,message="User created successfully.",code=status.HTTP_201_CREATED)
+            return success(data=serializer.data,message="User created successfully.",code=status.HTTP_201_CREATED, status=status.HTTP_201_CREATED)
         raise ValidationError(serializer.errors)
 
 class SignInView(APIView):
@@ -131,11 +131,11 @@ class UpdateProfileAvatarView(APIView):
         user = request.user
 
         try:
-            userProfile = UserProfile.objects.select_related('user').get(user=user)
-        except UserProfile.DoesNotExist as e:
+            profile = Profile.objects.select_related('user').get(user=user)
+        except Profile.DoesNotExist as e:
             return Response({'status': status.HTTP_400_BAD_REQUEST, 'success': 'false', 'message': 'User not Found.', 'data': str(e)}, status.HTTP_400_BAD_REQUEST)
 
-        serializer = UpdateProfileAvatarSerializer(userProfile, data=request.data, partial=True)
+        serializer = UpdateProfileAvatarSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({'status':status.HTTP_200_OK, 'success':True, 'message': 'Profile avatar update successfully.', 'data': serializer.data}, status.HTTP_200_OK)
@@ -150,11 +150,11 @@ class UpdateProfileView(APIView):
         user = request.user
 
         try:
-            userProfile = UserProfile.objects.select_related('user').get(user=user)
-        except UserProfile.DoesNotExist:
+            profile = Profile.objects.select_related('user').get(user=user)
+        except Profile.DoesNotExist:
             return Response({'status': status.HTTP_400_BAD_REQUEST, 'success': False, 'message': 'User not found.', 'data': []})
 
-        serializer = UserProfileSerializer(userProfile, data=request.data, partial=True)
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({'status': status.HTTP_200_OK, 'success': True, 'message': 'Profile update successfully.', 'data': serializer.data})
@@ -169,16 +169,14 @@ class ProfileGet(APIView):
         user = request.user
 
         try:
-            profile = UserProfile.objects.select_related('user').get(user=user)
-        except UserProfile.DoesNotExist:
+            profile = Profile.objects.select_related('user').get(user=user)
+        except Profile.DoesNotExist:
             return Response({'status': status.HTTP_400_BAD_REQUEST, 'success': False, 'message': 'User not found.', 'data': []})
 
         data = {
             'id': profile.id,
             'email': profile.user.email,
-            'first_name': profile.first_name,
-            'last_name': profile.last_name,
-            'phone': profile.phone,
+            'name': profile.name,
             'accepted_terms': profile.accepted_terms,
             'avatar_url': profile.avatar.url if profile.avatar else None,
             'created_at': profile.created_at,

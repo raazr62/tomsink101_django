@@ -80,21 +80,29 @@ def seed_users():
     ]
 
     for user in user_data:
-        user_instance = User.objects.create_user(
+        # Use get_or_create to avoid duplicate users
+        user_instance, created = User.objects.get_or_create(
             email=user["email"],
-            password=user["password"],
-            is_staff=user["is_staff"],
-            is_superuser=user["is_superuser"],
+            defaults={
+                'is_staff': user["is_staff"],
+                'is_superuser': user["is_superuser"],
+            }
         )
+        
+        # Set password if user was just created
+        if created:
+            user_instance.set_password(user["password"])
+            user_instance.save()
 
+        # Get or create profile
         Profile.objects.get_or_create(
             user=user_instance,
-            name=user["profile"]["name"],
-            phone=user["profile"]["phone"],
-            accepted_terms=user["profile"]["accepted_terms"],
-            avatar=user["profile"]["avatar"],
-            dob=user["profile"]["dob"],
+            defaults={
+                'name': user["profile"]["name"],
+                'accepted_terms': user["profile"]["accepted_terms"],
+                'avatar': user["profile"]["avatar"],
+                'dob': user["profile"]["dob"],
+            }
         )
-
 
     print("✅ User data seeded successfully.")

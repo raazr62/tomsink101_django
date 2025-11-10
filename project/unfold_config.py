@@ -122,41 +122,57 @@ def get_unfold_settings():
                     ],
                 },
                 {
-                    "title": _("Page Management"),
+                    "title": _("Content Management System"),
                     "separator": True,
                     "collapsible": True,
                     "items": [
                         {
-                            "title": _("Pages"),
-                            "icon": "pages",
-                            "link": reverse_lazy("admin:cms_page_changelist"),
+                            "title": _("🎯 CMS Dashboard"),
+                            "icon": "dashboard_customize",
+                            "link": reverse_lazy("admin:cms_websitecontentmanager_changelist"),
                         },
-                    ],
-                },
-                {
-                    "title": _("CMS Management"),
-                    "separator": True,
-                    "collapsible": True,
-                    "items": [
                         {
-                            "title": _("CMS"),
-                            "icon": "auto_stories",
-                            # "link": reverse_lazy("admin:cms_landingpagecontent_changelist"),
+                            "title": _("Hero Section"),
+                            "icon": "home",
+                            "link": reverse_lazy("admin:cms_herosection_changelist"),
                         },
-                    ],
-                },
-                {
-                    "title": _("FAQ Management"),
-                    "separator": True,
-                    "collapsible": True,
-                    "items": [
+                        {
+                            "title": _("Success Stories"),
+                            "icon": "stars",
+                            "link": reverse_lazy("admin:cms_successstoriessection_changelist"),
+                        },
+                        {
+                            "title": _("AI Coach"),
+                            "icon": "smart_toy",
+                            "link": reverse_lazy("admin:cms_aicoachsection_changelist"),
+                        },
+                        {
+                            "title": _("Features"),
+                            "icon": "auto_awesome",
+                            "link": reverse_lazy("admin:cms_featuresection_changelist"),
+                        },
+                        {
+                            "title": _("Call-to-Action"),
+                            "icon": "campaign",
+                            "link": reverse_lazy("admin:cms_ctasection_changelist"),
+                        },
+                        {
+                            "title": _("Footer & Social"),
+                            "icon": "link",
+                            "link": reverse_lazy("admin:cms_footerlink_changelist"),
+                        },
                         {
                             "title": _("FAQs"),
                             "icon": "help",
                             "link": reverse_lazy("admin:cms_faq_changelist"),
                         },
+                        {
+                            "title": _("Legal Pages"),
+                            "icon": "gavel",
+                            "link": reverse_lazy("admin:cms_page_changelist"),
+                        },
                     ],
-                }
+                },
             ],
         },
     }

@@ -1,13 +1,13 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
-from .models import User, UserProfile
+from .models import User, Profile
 from django.utils.html import format_html
 
 @admin.register(User)
 class CustomAdminClass(ModelAdmin):
-    list_display = ('id', 'email', 'first_name', 'last_name', 'preview_user_image', 'check_is_superuser')
-    list_display_links = ('id', 'email', 'first_name', 'last_name', 'preview_user_image', 'check_is_superuser')
-    search_fields = ('email', 'first_name', 'last_name')
+    list_display = ('id', 'email', 'name', 'preview_user_image', 'check_is_superuser')
+    list_display_links = ('id', 'email', 'name', 'preview_user_image', 'check_is_superuser')
+    search_fields = ('email', 'name')
 
 
     def get_queryset(self, request):
@@ -15,11 +15,8 @@ class CustomAdminClass(ModelAdmin):
         return qs.exclude(id=1)
 
 
-    def first_name(self, obj):
-        return obj.profile.first_name if hasattr(obj, 'profile') else ''
-
-    def last_name(self, obj):
-        return obj.profile.last_name if hasattr(obj, 'profile') else ''
+    def name(self, obj):
+        return obj.profile.name if hasattr(obj, 'profile') else ''
 
 
     def preview_user_image(self, obj):
@@ -30,8 +27,8 @@ class CustomAdminClass(ModelAdmin):
     def check_is_superuser(self, obj):
         return 'YES' if obj.is_superuser else 'NO'
     
-@admin.register(UserProfile)
+@admin.register(Profile)
 class UserProfileAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'first_name', 'last_name', 'phone', 'avatar', 'dob')
-    list_display_links = ('id', 'user', 'first_name', 'last_name')
-    search_fields = ('user__email', 'first_name', 'last_name')
+    list_display = ('id', 'user', 'name', 'avatar', 'dob')
+    list_display_links = ('id', 'user', 'name')
+    search_fields = ('user__email', 'name')
