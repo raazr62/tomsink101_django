@@ -10,6 +10,7 @@ from django.db.models import Count
 import json
 from django.db.models.functions import TruncDate
 from rest_framework.validators import ValidationError
+from django.utils import timezone
 from .serializers import (
     SignUpSerializer,
     SignInSerializer,
@@ -21,6 +22,7 @@ from .serializers import (
     ResetPasswordSerializer,
     UpdateProfileAvatarSerializer,
     UserProfileSerializer,
+    DeleteAccountSerializer,
 )
 from django.http import Http404
 from apps.utils.helpers import success, error
@@ -183,6 +185,38 @@ class ProfileGet(APIView):
             'updated_at': profile.updated_at,
         }
         return Response({'status': status.HTTP_200_OK, 'success': True, 'message': 'Profile get successfully.', 'data': data})
+
+
+class DeleteAccountView(APIView):
+    """
+    Delete Account View - Permanently deletes the authenticated user's account.
+    Requires password confirmation and explicit confirmation flag.
+    This action is irreversible and will cascade delete all related data.
+    """
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        serializer = DeleteAccountSerializer(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            deleted_email = serializer.save()
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'Your account has been permanently deleted. We\'re sorry to see you go.',
+                'data': {
+                    'deleted_email': deleted_email,
+                    'deleted_at': timezone.now()
+                }
+            })
+        
+        return Response({
+            'status': status.HTTP_400_BAD_REQUEST,
+            'success': False,
+            'message': 'Account deletion failed.',
+            'data': serializer.errors
+        })
 
 
 

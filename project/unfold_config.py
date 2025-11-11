@@ -173,6 +173,28 @@ def get_unfold_settings():
                         },
                     ],
                 },
+                {
+                    "title": _("Reviews & Feedback"),
+                    "separator": True,
+                    "collapsible": True,
+                    "items": [
+                        {
+                            "title": _("Reviews"),
+                            "icon": "star",
+                            "link": reverse_lazy("admin:review_review_changelist"),
+                        },
+                        {
+                            "title": _("Categories"),
+                            "icon": "category",
+                            "link": reverse_lazy("admin:review_reviewcategory_changelist"),
+                        },
+                        {
+                            "title": _("Settings"),
+                            "icon": "settings",
+                            "link": reverse_lazy("admin:review_reviewsettings_changelist"),
+                        },
+                    ],
+                },
             ],
         },
     }

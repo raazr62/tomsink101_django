@@ -9,6 +9,10 @@ urlpatterns = [
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     path('api/', include('apps.users.urls')),
     path('api/', include('apps.system_setting.urls')),
+    path('api/', include('apps.cms.urls')),
+    path('api/', include('apps.review.urls')),
+    path('api/', include('apps.notifications.urls')),
+    path('api/', include('apps.helpandsupport.urls')),
 ]
 
 if settings.DEBUG:

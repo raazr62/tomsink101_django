@@ -345,3 +345,40 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+
+class DeleteAccountSerializer(serializers.Serializer):
+    """
+    Serializer for account deletion
+    Requires password confirmation before deletion
+    """
+    password = serializers.CharField(write_only=True, required=True)
+    confirm_deletion = serializers.BooleanField(required=True)
+    
+    def validate_confirm_deletion(self, value):
+        """Ensure user confirmed deletion"""
+        if not value:
+            raise serializers.ValidationError("You must confirm account deletion.")
+        return value
+    
+    def validate(self, attrs):
+        """Validate password and check if user can be deleted"""
+        user = self.context['request'].user
+        password = attrs.get('password')
+        
+        # Check password
+        if not user.check_password(password):
+            raise serializers.ValidationError({'password': 'Invalid password.'})
+        
+        return attrs
+    
+    def save(self):
+        """Delete the user account and all related data"""
+        user = self.context['request'].user
+        
+        # Delete user (this will cascade delete profile and other related data)
+        user_email = user.email
+        user.delete()
+        
+        return {'email': user_email}
+
+
