@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/', include('apps.review.urls')),
     path('api/', include('apps.notifications.urls')),
     path('api/', include('apps.helpandsupport.urls')),
+    path('api/prelaunch/', include('apps.prelaunch.urls')),
 ]
 
 if settings.DEBUG:

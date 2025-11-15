@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "apps.review",
     "apps.notifications",
     "apps.helpandsupport",
+    "apps.prelaunch",
 
 ]
 
