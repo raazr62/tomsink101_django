@@ -71,6 +71,10 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.system_setting",
     "apps.cms",
+    "apps.review",
+    "apps.notifications",
+    "apps.helpandsupport",
+    "apps.prelaunch",
 
 ]
 

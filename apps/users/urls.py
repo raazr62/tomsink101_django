@@ -11,6 +11,7 @@ from .views import (
     UpdateProfileAvatarView,
     UpdateProfileView,
     ProfileGet,
+    DeleteAccountView,
 )
 
 urlpatterns = [
@@ -31,5 +32,8 @@ urlpatterns = [
     path('avatar-update/', UpdateProfileAvatarView.as_view(), name='avatar-update'),
     path('profile-update/', UpdateProfileView.as_view(), name='profile-update'),
     path('profile-get/', ProfileGet.as_view(), name='profile-get'),
+
+    # danger zone
+    path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
 
 ]
