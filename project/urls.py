@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/', include('apps.notifications.urls')),
     path('api/', include('apps.helpandsupport.urls')),
     path('api/prelaunch/', include('apps.prelaunch.urls')),
+    path('api/ai/', include('apps.manageai.urls')),
 ]
 
 if settings.DEBUG:
