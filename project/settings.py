@@ -75,6 +75,9 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.helpandsupport",
     "apps.prelaunch",
+    "apps.manageai",
+    "apps.task",
+    "apps.subscription",
 
 ]
 
@@ -250,3 +253,18 @@ from project import unfold_config
 UNFOLD = unfold_config.get_unfold_settings()
 
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # reads .env file
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
+
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_KEY = config('STRIPE_WEBHOOK_KEY')
+
+STRIPE_SUCCESS_URL = 'http://127.0.0.1:8000/package/success'
+STRIPE_CANCEL_URL = 'http://127.0.0.1:8000/package/cancel'

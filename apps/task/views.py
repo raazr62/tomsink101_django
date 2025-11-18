@@ -1,3 +1,590 @@
-from django.shortcuts import render
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.db.models import Count, Sum, Q
+from datetime import datetime, timedelta
+from calendar import monthrange
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
+from .serializers import (
+    WorkoutPlanSerializer,
+    ExerciseSerializer,
+    DietPlanSerializer,
+    MealSerializer,
+    DailyProgressSerializer,
+    ExerciseUpdateSerializer,
+    MealUpdateSerializer
+)
 
-# Create your views here.
+
+class WorkoutPlanListView(APIView):
+    """
+    API View for listing all workout plans for the authenticated user.
+    
+    GET: List all workout plans
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        workout_plans = WorkoutPlan.objects.filter(user=request.user)
+        serializer = WorkoutPlanSerializer(workout_plans, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class WorkoutPlanDetailView(APIView):
+    """
+    API View for retrieving, updating, or deleting a specific workout plan.
+    
+    GET: Retrieve workout plan details
+    PATCH: Update workout plan
+    DELETE: Delete workout plan
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, plan_id):
+        workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
+        serializer = WorkoutPlanSerializer(workout_plan)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, plan_id):
+        workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
+        serializer = WorkoutPlanSerializer(workout_plan, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, plan_id):
+        workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
+        workout_plan.delete()
+        return Response({'message': 'Workout plan deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class ExerciseUpdateView(APIView):
+    """
+    API View for updating exercise progress.
+    
+    PATCH: Update exercise status and completed sets
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, exercise_id):
+        exercise = get_object_or_404(Exercise, id=exercise_id, workout_plan__user=request.user)
+        serializer = ExerciseUpdateSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            if 'completed_sets' in serializer.validated_data:
+                exercise.completed_sets = serializer.validated_data['completed_sets']
+            if 'status' in serializer.validated_data:
+                exercise.status = serializer.validated_data['status']
+            if 'notes' in serializer.validated_data:
+                exercise.notes = serializer.validated_data['notes']
+            
+            exercise.save()
+            response_serializer = ExerciseSerializer(exercise)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DietPlanListView(APIView):
+    """
+    API View for listing all diet plans for the authenticated user.
+    
+    GET: List all diet plans
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        diet_plans = DietPlan.objects.filter(user=request.user)
+        serializer = DietPlanSerializer(diet_plans, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DietPlanDetailView(APIView):
+    """
+    API View for retrieving, updating, or deleting a specific diet plan.
+    
+    GET: Retrieve diet plan details
+    PATCH: Update diet plan
+    DELETE: Delete diet plan
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, plan_id):
+        diet_plan = get_object_or_404(DietPlan, id=plan_id, user=request.user)
+        serializer = DietPlanSerializer(diet_plan)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, plan_id):
+        diet_plan = get_object_or_404(DietPlan, id=plan_id, user=request.user)
+        serializer = DietPlanSerializer(diet_plan, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, plan_id):
+        diet_plan = get_object_or_404(DietPlan, id=plan_id, user=request.user)
+        diet_plan.delete()
+        return Response({'message': 'Diet plan deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class MealUpdateView(APIView):
+    """
+    API View for updating meal status.
+    
+    PATCH: Update meal completion status
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, meal_id):
+        meal = get_object_or_404(Meal, id=meal_id, diet_plan__user=request.user)
+        serializer = MealUpdateSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            if 'status' in serializer.validated_data:
+                meal.status = serializer.validated_data['status']
+            if 'notes' in serializer.validated_data:
+                meal.notes = serializer.validated_data['notes']
+            
+            meal.save()
+            response_serializer = MealSerializer(meal)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DailyProgressView(APIView):
+    """
+    API View for tracking daily progress.
+    
+    GET: Get daily progress for a specific date
+    POST: Create or update daily progress
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        date_str = request.query_params.get('date', timezone.now().date())
+        progress = DailyProgress.objects.filter(user=request.user, date=date_str)
+        serializer = DailyProgressSerializer(progress, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = DailyProgressSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TaskDashboardView(APIView):
+    """
+    API View for getting a dashboard overview of all tasks.
+    
+    GET: Get overview of workout plans, diet plans, and progress
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get active workout and diet plans
+        active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
+        active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
+        
+        # Get today's progress
+        today = timezone.now().date()
+        today_progress = DailyProgress.objects.filter(user=request.user, date=today).first()
+        
+        response_data = {
+            'active_workout_plan': WorkoutPlanSerializer(active_workout).data if active_workout else None,
+            'active_diet_plan': DietPlanSerializer(active_diet).data if active_diet else None,
+            'today_progress': DailyProgressSerializer(today_progress).data if today_progress else None,
+            'total_workout_plans': WorkoutPlan.objects.filter(user=request.user).count(),
+            'total_diet_plans': DietPlan.objects.filter(user=request.user).count(),
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class WeeklyStatsView(APIView):
+    """
+    API View for getting weekly statistics shown in the top cards.
+    
+    GET: Get calories burned, nutrition, active time, workouts completed
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get date range for this week
+        today = timezone.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        
+        # Get active plans
+        active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
+        active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
+        
+        # Calculate stats for this week
+        weekly_progress = DailyProgress.objects.filter(
+            user=request.user,
+            date__gte=week_start,
+            date__lte=week_end
+        )
+        
+        # Workouts completed this week
+        workouts_completed = weekly_progress.aggregate(
+            total=Sum('exercises_completed')
+        )['total'] or 0
+        
+        # Meals completed this week
+        meals_completed = weekly_progress.aggregate(
+            total=Sum('meals_completed')
+        )['total'] or 0
+        
+        # Calculate nutrition (from completed meals this week)
+        if active_diet:
+            completed_meals = Meal.objects.filter(
+                diet_plan=active_diet,
+                status='completed',
+                updated_at__date__gte=week_start,
+                updated_at__date__lte=week_end
+            )
+            total_nutrition = completed_meals.aggregate(
+                calories=Sum('calories'),
+                protein=Sum('protein'),
+                carbs=Sum('carbs'),
+                fats=Sum('fats')
+            )
+        else:
+            total_nutrition = {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0}
+        
+        # Estimate calories burned (rough calculation based on exercises)
+        calories_burned = workouts_completed * 350  # Rough estimate per workout
+        
+        # Estimate active time (rough calculation)
+        active_time_hours = workouts_completed * 0.75  # Roughly 45 min per workout
+        
+        response_data = {
+            'calories_burned': calories_burned,
+            'calories_burned_change': '+12%',  # You can calculate this from previous week
+            'nutrition': total_nutrition.get('calories', 0),
+            'nutrition_change': '+15%',
+            'active_time': round(active_time_hours, 1),
+            'active_time_change': '+1.2h',
+            'workouts_completed': workouts_completed,
+            'workouts_completed_change': '+3',
+            'week_progress': 65  # Overall progress percentage
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class WorkoutCalendarView(APIView):
+    """
+    API View for getting calendar data for a specific month.
+    
+    GET: Get workout calendar with completion status for each day
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get month and year from query params (default to current month)
+        year = int(request.query_params.get('year', timezone.now().year))
+        month = int(request.query_params.get('month', timezone.now().month))
+        
+        # Get first and last day of the month
+        first_day = datetime(year, month, 1).date()
+        last_day_num = monthrange(year, month)[1]
+        last_day = datetime(year, month, last_day_num).date()
+        
+        # Get all daily progress for this month
+        progress_data = DailyProgress.objects.filter(
+            user=request.user,
+            date__gte=first_day,
+            date__lte=last_day
+        ).values('date', 'exercises_completed', 'meals_completed')
+        
+        # Create a dict for quick lookup
+        progress_dict = {p['date']: p for p in progress_data}
+        
+        # Get active workout and diet plans
+        active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
+        active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
+        expected_exercises = active_workout.total_exercises if active_workout else 0
+        expected_meals = active_diet.total_meals if active_diet else 4
+        
+        # Build calendar data
+        calendar_data = []
+        for day in range(1, last_day_num + 1):
+            current_date = datetime(year, month, day).date()
+            progress = progress_dict.get(current_date, None)
+            
+            if progress:
+                exercises_done = progress['exercises_completed']
+                meals_done = progress['meals_completed']
+                
+                # Determine status
+                if exercises_done >= expected_exercises and meals_done >= expected_meals:
+                    status_type = 'complete'
+                elif exercises_done > 0 or meals_done > 0:
+                    status_type = 'incomplete'
+                else:
+                    status_type = 'rest'
+            else:
+                status_type = 'rest'
+            
+            calendar_data.append({
+                'day': day,
+                'date': current_date.isoformat(),
+                'status': status_type,
+                'exercises_completed': progress['exercises_completed'] if progress else 0,
+                'meals_completed': progress['meals_completed'] if progress else 0
+            })
+        
+        return Response({
+            'year': year,
+            'month': month,
+            'month_name': datetime(year, month, 1).strftime('%B %Y'),
+            'days': calendar_data
+        }, status=status.HTTP_200_OK)
+
+
+class DailyWorkoutDetailView(APIView):
+    """
+    API View for getting detailed workout information for a specific date.
+    
+    GET: Get exercises and meals for a specific date with completion status
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, date):
+        # Parse date
+        try:
+            target_date = datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get active workout and diet plans
+        active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
+        active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
+        
+        if not active_workout and not active_diet:
+            return Response({
+                'error': 'No active workout or diet plan found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get exercises with their completion status
+        exercises_data = []
+        if active_workout:
+            exercises = active_workout.exercises.all().order_by('order')
+            for exercise in exercises:
+                exercises_data.append({
+                    'id': str(exercise.id),
+                    'name': exercise.name,
+                    'sets': exercise.sets,
+                    'reps': exercise.reps,
+                    'completed_sets': exercise.completed_sets,
+                    'status': exercise.status,
+                    'completion_percentage': exercise.completion_percentage,
+                    'order': exercise.order
+                })
+        
+        # Get meals with their completion status
+        meals_data = []
+        if active_diet:
+            meals = active_diet.meals.all().order_by('order')
+            for meal in meals:
+                meals_data.append({
+                    'id': str(meal.id),
+                    'meal_type': meal.meal_type,
+                    'title': meal.title,
+                    'items': meal.items,
+                    'calories': meal.calories,
+                    'protein': meal.protein,
+                    'carbs': meal.carbs,
+                    'fats': meal.fats,
+                    'status': meal.status,
+                    'order': meal.order
+                })
+        
+        # Get daily progress for this date
+        daily_progress = DailyProgress.objects.filter(
+            user=request.user,
+            date=target_date
+        ).first()
+        
+        # Calculate today's nutrition totals from completed meals
+        if active_diet:
+            completed_meals_today = Meal.objects.filter(
+                diet_plan=active_diet,
+                status='completed',
+                updated_at__date=target_date
+            )
+            nutrition_totals = completed_meals_today.aggregate(
+                calories=Sum('calories'),
+                protein=Sum('protein'),
+                carbs=Sum('carbs'),
+                fats=Sum('fats')
+            )
+        else:
+            nutrition_totals = {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0}
+        
+        # Calculate completion progress
+        total_exercises = len(exercises_data)
+        completed_exercises = sum(1 for e in exercises_data if e['status'] == 'completed')
+        
+        total_meals = len(meals_data)
+        completed_meals = sum(1 for m in meals_data if m['status'] == 'completed')
+        
+        response_data = {
+            'date': target_date.isoformat(),
+            'workout_plan': {
+                'id': str(active_workout.id) if active_workout else None,
+                'name': active_workout.name if active_workout else None,
+                'exercises': exercises_data,
+                'total_exercises': total_exercises,
+                'completed_exercises': completed_exercises,
+                'progress_percentage': round((completed_exercises / total_exercises * 100), 2) if total_exercises > 0 else 0
+            },
+            'diet_plan': {
+                'id': str(active_diet.id) if active_diet else None,
+                'name': active_diet.name if active_diet else None,
+                'meals': meals_data,
+                'total_meals': total_meals,
+                'completed_meals': completed_meals,
+                'nutrition_totals': {
+                    'calories': nutrition_totals.get('calories', 0) or 0,
+                    'protein': nutrition_totals.get('protein', 0) or 0,
+                    'carbs': nutrition_totals.get('carbs', 0) or 0,
+                    'fats': nutrition_totals.get('fats', 0) or 0
+                },
+                'target_nutrition': {
+                    'calories': active_diet.total_daily_calories if active_diet else 0,
+                    'protein': active_diet.total_daily_protein if active_diet else 0,
+                    'carbs': active_diet.total_daily_carbs if active_diet else 0,
+                    'fats': active_diet.total_daily_fats if active_diet else 0
+                }
+            },
+            'daily_progress': DailyProgressSerializer(daily_progress).data if daily_progress else None
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class ExerciseSetToggleView(APIView):
+    """
+    API View for toggling individual set completion for an exercise.
+    
+    POST: Toggle a specific set as complete/incomplete
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, exercise_id):
+        exercise = get_object_or_404(Exercise, id=exercise_id, workout_plan__user=request.user)
+        set_number = request.data.get('set_number', 1)
+        
+        # Toggle set completion
+        if set_number <= exercise.sets:
+            if exercise.completed_sets < set_number:
+                exercise.completed_sets = set_number
+            elif exercise.completed_sets == set_number:
+                exercise.completed_sets = set_number - 1
+            
+            # Update status based on completion
+            if exercise.completed_sets == 0:
+                exercise.status = 'pending'
+            elif exercise.completed_sets < exercise.sets:
+                exercise.status = 'in_progress'
+            else:
+                exercise.status = 'completed'
+            
+            exercise.save()
+            
+            # Update daily progress
+            today = timezone.now().date()
+            workout_plan = exercise.workout_plan
+            
+            # Count completed exercises for active plan
+            completed_count = workout_plan.exercises.filter(status='completed').count()
+            
+            # Get active diet plan
+            active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
+            
+            daily_progress, created = DailyProgress.objects.get_or_create(
+                user=request.user,
+                date=today,
+                defaults={
+                    'exercises_completed': completed_count,
+                    'workout_plan': workout_plan,
+                    'diet_plan': active_diet
+                }
+            )
+            if not created:
+                daily_progress.exercises_completed = completed_count
+                daily_progress.workout_plan = workout_plan
+                if active_diet:
+                    daily_progress.diet_plan = active_diet
+                daily_progress.save()
+            
+            return Response({
+                'id': str(exercise.id),
+                'completed_sets': exercise.completed_sets,
+                'status': exercise.status,
+                'completion_percentage': exercise.completion_percentage
+            }, status=status.HTTP_200_OK)
+        
+        return Response({'error': 'Invalid set number'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MealToggleView(APIView):
+    """
+    API View for toggling meal completion status.
+    
+    POST: Toggle meal as complete/incomplete
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, meal_id):
+        meal = get_object_or_404(Meal, id=meal_id, diet_plan__user=request.user)
+        
+        # Toggle meal status
+        if meal.status == 'completed':
+            meal.status = 'pending'
+        else:
+            meal.status = 'completed'
+        
+        meal.save()
+        
+        # Update daily progress
+        today = timezone.now().date()
+        diet_plan = meal.diet_plan
+        
+        # Count completed meals for active plan
+        completed_count = diet_plan.meals.filter(status='completed').count()
+        
+        # Get active workout plan
+        active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
+        
+        daily_progress, created = DailyProgress.objects.get_or_create(
+            user=request.user,
+            date=today,
+            defaults={
+                'meals_completed': completed_count,
+                'diet_plan': diet_plan,
+                'workout_plan': active_workout
+            }
+        )
+        if not created:
+            daily_progress.meals_completed = completed_count
+            daily_progress.diet_plan = diet_plan
+            if active_workout:
+                daily_progress.workout_plan = active_workout
+            daily_progress.save()
+        
+        return Response({
+            'id': str(meal.id),
+            'status': meal.status,
+            'is_completed': meal.is_completed
+        }, status=status.HTTP_200_OK)
