@@ -14,14 +14,91 @@ from .serializers import (
     ChatSessionSerializer,
     ChatMessageSerializer
 )
+from django.conf import settings
 
 
 def get_openai_client():
     """Initialize OpenAI client with API key from environment."""
-    api_key = os.getenv('OPENAI_API_KEY')
+    api_key = settings.OPENAI_API_KEY
+    print(f"Using OpenAI API Key: {api_key}")  # Debugging line to check if the key is being read
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
     return OpenAI(api_key=api_key)
+
+
+def save_workout_plan_as_task(user, session, workout_data, summary):
+    """Save workout plan as a trackable task."""
+    from apps.task.models import WorkoutPlan, Exercise
+    
+    if not workout_data:
+        return None
+    
+    # Create workout plan
+    workout_plan = WorkoutPlan.objects.create(
+        user=user,
+        chat_session=session,
+        name=f"Workout Plan - {session.created_at.strftime('%Y-%m-%d')}",
+        summary=summary or "AI Generated Workout Plan",
+        status='active'
+    )
+    
+    # Create exercises
+    for index, exercise_data in enumerate(workout_data):
+        Exercise.objects.create(
+            workout_plan=workout_plan,
+            name=exercise_data.get('exercise', 'Unnamed Exercise'),
+            sets=exercise_data.get('sets', 3),
+            reps=str(exercise_data.get('reps', '10-12')),
+            order=index,
+            status='pending'
+        )
+    
+    return workout_plan
+
+
+def save_diet_plan_as_task(user, session, diet_data, summary):
+    """Save diet plan as a trackable task."""
+    from apps.task.models import DietPlan, Meal
+    
+    if not diet_data:
+        return None
+    
+    # Create diet plan
+    diet_plan = DietPlan.objects.create(
+        user=user,
+        chat_session=session,
+        name=f"Diet Plan - {session.created_at.strftime('%Y-%m-%d')}",
+        summary=summary or "AI Generated Diet Plan",
+        status='active'
+    )
+    
+    # Map meal types
+    meal_type_map = {
+        'breakfast': 'breakfast',
+        'lunch': 'lunch',
+        'snack': 'snack',
+        'dinner': 'dinner'
+    }
+    
+    # Create meals
+    for index, meal_data in enumerate(diet_data):
+        meal_type = meal_data.get('meal', '').lower()
+        nutrients = meal_data.get('nutrients', {})
+        
+        Meal.objects.create(
+            diet_plan=diet_plan,
+            meal_type=meal_type_map.get(meal_type, 'snack'),
+            title=meal_data.get('title', f"{meal_type.capitalize()} Meal"),
+            items=meal_data.get('items', []),
+            calories=nutrients.get('calories', 0),
+            protein=nutrients.get('protein', 0),
+            carbs=nutrients.get('carbs', 0),
+            fats=nutrients.get('fats', 0),
+            order=index,
+            status='pending'
+        )
+    
+    return diet_plan
 
 # System prompt for the AI
 SYSTEM_PROMPT = """
@@ -159,25 +236,49 @@ class ChatView(APIView):
                 summary=summary if summary else None
             )
 
+            # Save workout and diet plans as trackable tasks
+            workout_plan_id = None
+            diet_plan_id = None
+            
+            if workout and len(workout) > 0:
+                workout_plan = save_workout_plan_as_task(request.user, session, workout, summary)
+                if workout_plan:
+                    workout_plan_id = str(workout_plan.id)
+            
+            if diet and len(diet) > 0:
+                diet_plan = save_diet_plan_as_task(request.user, session, diet, summary)
+                if diet_plan:
+                    diet_plan_id = str(diet_plan.id)
+
             # Prepare response
             response_data = {
                 'session_id': str(session.id),
                 'message': ai_message,
                 'workout': workout,
                 'diet': diet,
-                'summary': summary
+                'summary': summary,
+                'workout_plan_id': workout_plan_id,
+                'diet_plan_id': diet_plan_id
             }
 
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "AI response generated successfully",
+                "data":response_data} , status=status.HTTP_200_OK)
 
         except json.JSONDecodeError as e:
-            return Response(
-                {'error': 'Failed to parse AI response', 'details': str(e)},
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "error": "Failed to parse AI response", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         except Exception as e:
-            return Response(
-                {'error': 'An error occurred', 'details': str(e)},
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "error": "An error occurred", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -193,7 +294,12 @@ class ChatSessionListView(APIView):
     def get(self, request):
         sessions = ChatSession.objects.filter(user=request.user)
         serializer = ChatSessionSerializer(sessions, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Chat sessions retrieved successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
 
 class ChatSessionDetailView(APIView):
@@ -208,15 +314,22 @@ class ChatSessionDetailView(APIView):
     def get(self, request, session_id):
         session = get_object_or_404(ChatSession, id=session_id, user=request.user)
         serializer = ChatSessionSerializer(session)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Chat session retrieved successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
     def delete(self, request, session_id):
         session = get_object_or_404(ChatSession, id=session_id, user=request.user)
         session.delete()
-        return Response(
-            {'message': 'Chat session deleted successfully'},
-            status=status.HTTP_204_NO_CONTENT
-        )
+        return Response({
+            "status": status.HTTP_204_NO_CONTENT,
+            "success": True,
+            "message": "Chat session deleted successfully"
+        }, status=status.HTTP_204_NO_CONTENT
+            )
 
 
 class ChatSessionCreateView(APIView):
@@ -230,4 +343,9 @@ class ChatSessionCreateView(APIView):
     def post(self, request):
         session = ChatSession.objects.create(user=request.user)
         serializer = ChatSessionSerializer(session)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({
+            "status": status.HTTP_201_CREATED,
+            "success": True,
+            "message": "Chat session created successfully",
+            "data": serializer.data
+        }, status=status.HTTP_201_CREATED)

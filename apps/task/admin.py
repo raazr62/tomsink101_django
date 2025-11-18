@@ -1,3 +1,81 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
 
-# Register your models here.
+
+class ExerciseInline(admin.TabularInline):
+    model = Exercise
+    extra = 0
+    fields = ('name', 'sets', 'reps', 'completed_sets', 'status', 'order')
+
+
+class MealInline(admin.TabularInline):
+    model = Meal
+    extra = 0
+    fields = ('meal_type', 'title', 'calories', 'protein', 'carbs', 'fats', 'status', 'order')
+
+
+@admin.register(WorkoutPlan)
+class WorkoutPlanAdmin(ModelAdmin):
+    list_display = ('name', 'user', 'status', 'progress_percentage', 'total_exercises', 'start_date', 'created_at')
+    list_filter = ('status', 'start_date', 'created_at')
+    search_fields = ('name', 'user__email', 'summary')
+    readonly_fields = ('id', 'progress_percentage', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
+    inlines = [ExerciseInline]
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('id', 'user', 'name', 'summary', 'chat_session')
+        }),
+        ('Status & Progress', {
+            'fields': ('status', 'progress_percentage', 'total_exercises', 'completed_exercises')
+        }),
+        ('Dates', {
+            'fields': ('start_date', 'target_completion_date', 'created_at', 'updated_at')
+        }),
+    )
+
+
+@admin.register(Exercise)
+class ExerciseAdmin(ModelAdmin):
+    list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage')
+    list_filter = ('status', 'created_at')
+    search_fields = ('name', 'workout_plan__name', 'workout_plan__user__email')
+    readonly_fields = ('id', 'completion_percentage', 'created_at', 'updated_at')
+
+
+@admin.register(DietPlan)
+class DietPlanAdmin(ModelAdmin):
+    list_display = ('name', 'user', 'status', 'total_meals', 'total_daily_calories', 'start_date', 'created_at')
+    list_filter = ('status', 'start_date', 'created_at')
+    search_fields = ('name', 'user__email', 'summary')
+    readonly_fields = ('id', 'total_meals', 'total_daily_calories', 'total_daily_protein', 'total_daily_carbs', 'total_daily_fats', 'created_at', 'updated_at')
+    inlines = [MealInline]
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('id', 'user', 'name', 'summary', 'chat_session')
+        }),
+        ('Status & Nutrition', {
+            'fields': ('status', 'total_meals', 'total_daily_calories', 'total_daily_protein', 'total_daily_carbs', 'total_daily_fats')
+        }),
+        ('Dates', {
+            'fields': ('target_completion_date', 'created_at', 'updated_at')
+        }),
+    )
+
+
+@admin.register(Meal)
+class MealAdmin(ModelAdmin):
+    list_display = ('title', 'meal_type', 'diet_plan', 'calories', 'protein', 'carbs', 'fats', 'status')
+    list_filter = ('meal_type', 'status', 'created_at')
+    search_fields = ('title', 'diet_plan__name', 'diet_plan__user__email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(DailyProgress)
+class DailyProgressAdmin(ModelAdmin):
+    list_display = ('user', 'date', 'workout_plan', 'diet_plan', 'exercises_completed', 'meals_completed')
+    list_filter = ('date', 'user')
+    search_fields = ('user__email', 'notes')
+    readonly_fields = ('id', 'created_at', 'updated_at')
