@@ -17,6 +17,10 @@ class Package(models.Model):
 
     stripe_product_id = models.CharField(max_length=100, blank=True)
     stripe_price_id = models.CharField(max_length=100, blank=True)
+    
+    # PayPal IDs
+    paypal_product_id = models.CharField(max_length=100, blank=True)
+    paypal_plan_id = models.CharField(max_length=100, blank=True)
 
     discount = models.DecimalField(help_text='Set discount percentages.',max_digits=10, decimal_places=2, default=0)
     discount_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -44,7 +48,16 @@ class Subscription(models.Model):
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(blank=True, null=True)
 
+    # Payment method tracking
+    payment_method = models.CharField(
+        max_length=20,
+        choices=[('stripe', 'Stripe'), ('paypal', 'PayPal')],
+        default='stripe'
+    )
+    
     stripe_subscription_id = models.CharField(max_length=100, blank=True)
+    paypal_subscription_id = models.CharField(max_length=100, blank=True)
+    
     is_active = models.BooleanField(default=False)
 
     def __str__(self):
