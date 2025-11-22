@@ -1,4 +1,4 @@
-from .models import Package, Subscription
+from .models import Package, Subscription, PackageFeature, PricingSection
 import stripe
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -9,7 +9,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from .serializers import SubscriptionSerializer, PackageSerializer
+from rest_framework.permissions import AllowAny
+from .serializers import SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
 import requests
 import json
 from base64 import b64encode
@@ -549,3 +550,103 @@ def paypal_webhook_view(request):
     
     except Exception as e:
         return HttpResponse(status=400)
+
+
+# ============= CMS API Views =============
+
+class PricingSectionView(APIView):
+    """Get the active pricing section with all packages and features"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        try:
+            pricing_section = PricingSection.objects.filter(is_active=True).first()
+            
+            if not pricing_section:
+                # Return default structure if no pricing section exists
+                packages = Package.objects.filter(is_active=True).prefetch_related('features')
+                return Response({
+                    'status': status.HTTP_200_OK,
+                    'success': True,
+                    'data': {
+                        'title': 'Choose Your Plan',
+                        'subtitle': '',
+                        'background_color': '#1a1a1a',
+                        'text_color': '#ffffff',
+                        'popular_badge_text': 'Most Popular',
+                        'popular_badge_color': '#d4ff00',
+                        'free_plan_button_text': 'Get Started Free',
+                        'paid_plan_button_text': 'Get Started',
+                        'packages': PackageCMSSerializer(packages, many=True).data
+                    }
+                }, status=status.HTTP_200_OK)
+            
+            serializer = PricingSectionSerializer(pricing_section)
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'message': 'Failed to fetch pricing section',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PackageListView(APIView):
+    """Get all active packages with features"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        try:
+            packages = Package.objects.filter(is_active=True).prefetch_related('features')
+            serializer = PackageCMSSerializer(packages, many=True)
+            
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'message': 'Failed to fetch packages',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PackageDetailView(APIView):
+    """Get a single package with all features"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request, package_id):
+        try:
+            package = Package.objects.prefetch_related('features').get(id=package_id, is_active=True)
+            serializer = PackageCMSSerializer(package)
+            
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Package.DoesNotExist:
+            return Response({
+                'status': status.HTTP_404_NOT_FOUND,
+                'success': False,
+                'message': 'Package not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'message': 'Failed to fetch package',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

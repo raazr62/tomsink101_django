@@ -2,6 +2,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # CMS API endpoints (public)
+    path('pricing/', views.PricingSectionView.as_view(), name='pricing-section'),
+    path('pricing/packages/', views.PackageListView.as_view(), name='package-list'),
+    path('pricing/packages/<int:package_id>/', views.PackageDetailView.as_view(), name='package-detail'),
+    
     # Package endpoints
     path('packages/', views.PackageView.as_view(), name='package'),
     path('packages/<int:pk>', views.PackageView.as_view(), name='package'),
