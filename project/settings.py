@@ -262,9 +262,24 @@ load_dotenv()  # reads .env file
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
-
+# Stripe Configuration
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_KEY = config('STRIPE_WEBHOOK_KEY')
 
 STRIPE_SUCCESS_URL = 'http://127.0.0.1:8000/package/success'
 STRIPE_CANCEL_URL = 'http://127.0.0.1:8000/package/cancel'
+
+
+# PayPal Configuration
+PAYPAL_CLIENT_ID = config('PAYPAL_CLIENT_ID', default='')
+PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET', default='')
+PAYPAL_MODE = config('PAYPAL_MODE', default='sandbox')  # 'sandbox' or 'live'
+
+# PayPal API URLs
+if PAYPAL_MODE == 'live':
+    PAYPAL_API_URL = 'https://api-m.paypal.com'
+else:
+    PAYPAL_API_URL = 'https://api-m.sandbox.paypal.com'
+
+PAYPAL_SUCCESS_URL = 'http://127.0.0.1:8000/package/paypal-success'
+PAYPAL_CANCEL_URL = 'http://127.0.0.1:8000/package/paypal-cancel'
