@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/prelaunch/', include('apps.prelaunch.urls')),
     path('api/', include('apps.manageai.urls')),
     path('api/', include('apps.task.urls')),
+    path('api/', include('apps.subscription.urls')),
 ]
 
 if settings.DEBUG:
