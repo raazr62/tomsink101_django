@@ -15,14 +15,50 @@ class ChatSessionSerializer(serializers.ModelSerializer):
     """Serializer for ChatSession model."""
     messages = ChatMessageSerializer(many=True, read_only=True)
     message_count = serializers.SerializerMethodField()
+    workout_plans_count = serializers.SerializerMethodField()
+    diet_plans_count = serializers.SerializerMethodField()
     
     class Meta:
         model = ChatSession
-        fields = ['id', 'user', 'created_at', 'updated_at', 'messages', 'message_count']
+        fields = ['id', 'user', 'created_at', 'updated_at', 'messages', 'message_count',
+                  'workout_plans_count', 'diet_plans_count']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
     def get_message_count(self, obj):
         return obj.messages.count()
+    
+    def get_workout_plans_count(self, obj):
+        return obj.workout_plans.count()
+    
+    def get_diet_plans_count(self, obj):
+        return obj.diet_plans.count()
+
+
+class ChatSessionDetailSerializer(serializers.ModelSerializer):
+    """Detailed serializer for ChatSession model with full plan information."""
+    messages = ChatMessageSerializer(many=True, read_only=True)
+    message_count = serializers.SerializerMethodField()
+    workout_plans = serializers.SerializerMethodField()
+    diet_plans = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ChatSession
+        fields = ['id', 'user', 'created_at', 'updated_at', 'messages', 'message_count',
+                  'workout_plans', 'diet_plans']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+    
+    def get_message_count(self, obj):
+        return obj.messages.count()
+    
+    def get_workout_plans(self, obj):
+        from apps.task.serializers import WorkoutPlanSerializer
+        plans = obj.workout_plans.all().order_by('-created_at')
+        return WorkoutPlanSerializer(plans, many=True).data
+    
+    def get_diet_plans(self, obj):
+        from apps.task.serializers import DietPlanSerializer
+        plans = obj.diet_plans.all().order_by('-created_at')
+        return DietPlanSerializer(plans, many=True).data
 
 
 class ChatRequestSerializer(serializers.Serializer):
@@ -51,3 +87,24 @@ class ChatResponseSerializer(serializers.Serializer):
                 'summary': instance.get('summary', '')
             }
         }
+
+
+class ModifyPlanRequestSerializer(serializers.Serializer):
+    """Serializer for plan modification request."""
+    session_id = serializers.UUIDField(required=False, allow_null=True)
+    workout_plan_id = serializers.UUIDField(required=False, allow_null=True)
+    diet_plan_id = serializers.UUIDField(required=False, allow_null=True)
+    modification_request = serializers.CharField(required=True, allow_blank=False)
+    
+    def validate_modification_request(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Modification request cannot be empty.")
+        return value.strip()
+    
+    def validate(self, data):
+        """Ensure at least one plan ID is provided."""
+        if not data.get('workout_plan_id') and not data.get('diet_plan_id'):
+            raise serializers.ValidationError(
+                "At least one of workout_plan_id or diet_plan_id must be provided."
+            )
+        return data

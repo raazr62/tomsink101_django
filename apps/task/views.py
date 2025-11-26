@@ -30,7 +30,12 @@ class WorkoutPlanListView(APIView):
     def get(self, request):
         workout_plans = WorkoutPlan.objects.filter(user=request.user)
         serializer = WorkoutPlanSerializer(workout_plans, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({   
+                            "status": status.HTTP_200_OK,
+                            "message": "Workout plans retrieved successfully",
+                            "data": serializer.data},
+                            status=status.HTTP_200_OK
+                        )  
 
 
 class WorkoutPlanDetailView(APIView):

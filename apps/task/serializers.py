@@ -23,10 +23,10 @@ class WorkoutPlanSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = WorkoutPlan
-        fields = ['id', 'user', 'name', 'summary', 'status', 'start_date', 'target_completion_date',
+        fields = ['id', 'user', 'chat_session', 'name', 'summary', 'status', 'start_date', 'target_completion_date',
                   'exercises', 'progress_percentage', 'total_exercises', 'completed_exercises',
                   'created_at', 'updated_at']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'chat_session', 'created_at', 'updated_at']
 
 
 class MealSerializer(serializers.ModelSerializer):
@@ -51,10 +51,10 @@ class DietPlanSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = DietPlan
-        fields = ['id', 'user', 'name', 'summary', 'status', 'start_date', 'target_completion_date',
+        fields = ['id', 'user', 'chat_session', 'name', 'summary', 'status', 'start_date', 'target_completion_date',
                   'meals', 'total_meals', 'total_daily_calories', 'total_daily_protein',
                   'total_daily_carbs', 'total_daily_fats', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'chat_session', 'created_at', 'updated_at']
 
 
 class DailyProgressSerializer(serializers.ModelSerializer):
