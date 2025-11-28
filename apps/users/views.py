@@ -23,6 +23,8 @@ from .serializers import (
     UpdateProfileAvatarSerializer,
     UserProfileSerializer,
     DeleteAccountSerializer,
+    VerifyEmailOTPSerializer,
+    ResendVerificationOTPSerializer,
 )
 from django.http import Http404
 from apps.utils.helpers import success, error
@@ -34,10 +36,10 @@ class SignUpView(APIView):
 
     def post(self, request):
 
-        serializer = SignUpSerializer(data=request.data)
+        serializer = SignUpSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            return success(data=serializer.data,message="User created successfully.",code=status.HTTP_201_CREATED, status=status.HTTP_201_CREATED)
+            return success(data=serializer.data,message="User created successfully. Please check your email to verify your account.",code=status.HTTP_201_CREATED, status=status.HTTP_201_CREATED)
         raise ValidationError(serializer.errors)
 
 class SignInView(APIView):
@@ -219,5 +221,59 @@ class DeleteAccountView(APIView):
         })
 
 
+class VerifyEmailOTPView(APIView):
+    """
+    API View for verifying email address using OTP
+    POST: Verify email using OTP sent to email
+    """
+    permission_classes = []
 
+    def post(self, request):
+        serializer = VerifyEmailOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'Email verified successfully! You can now sign in.',
+                'data': {
+                    'email': user.email,
+                    'is_email_verified': user.is_email_verified
+                }
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'status': status.HTTP_400_BAD_REQUEST,
+            'success': False,
+            'message': 'Email verification failed.',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResendVerificationOTPView(APIView):
+    """
+    API View for resending verification OTP
+    POST: Resend verification OTP to user's email
+    """
+    permission_classes = []
+
+    def post(self, request):
+        serializer = ResendVerificationOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'Verification OTP sent successfully. Please check your inbox.',
+                'data': {
+                    'email': user.email
+                }
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'status': status.HTTP_400_BAD_REQUEST,
+            'success': False,
+            'message': 'Failed to resend verification OTP.',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 

@@ -9,7 +9,7 @@ from django.contrib.auth.hashers import make_password
 from django.utils.timezone import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-from .utils import generate_otp, send_normal_mail
+from .utils import generate_otp, send_normal_mail, send_verification_otp_email
 from django.utils import timezone
 from apps.utils.helpers import error
 
@@ -30,17 +30,32 @@ class SignUpSerializer(serializers.ModelSerializer):
         fields = ['email', 'password', 'name']
 
     def create(self, validated_data):
-        name = validated_data.pop('name')
+        name = validated_data.pop('name', '')
         email = validated_data.pop('email')
         password = validated_data.pop('password')
 
-        
+        # Create user
         user = User.objects.create_user(email=email, password=password, **validated_data)
 
+        # Create profile
         Profile.objects.create(
             user=user,
             name=name
         )
+
+        # Generate OTP for email verification
+        otp = generate_otp(6)
+        user.email_verification_otp = make_password(otp)
+        user.otp_expires_at = timezone.now() + timedelta(minutes=10)
+        user.otp_attempts = 0
+        user.save()
+
+        # Send verification OTP email
+        try:
+            send_verification_otp_email(user, otp)
+        except Exception as e:
+            # Log the error but don't fail the signup
+            print(f"Failed to send verification email: {str(e)}")
 
         return user
     
@@ -49,6 +64,8 @@ class SignUpSerializer(serializers.ModelSerializer):
             'id': instance.id,
             'name': instance.profile.name,
             'email': instance.email,
+            'is_email_verified': instance.is_email_verified,
+            'message': 'Account created successfully. Please check your email to verify your account.'
         }
 
 
@@ -66,6 +83,8 @@ class SignInSerializer(serializers.Serializer):
            raise serializers.ValidationError({'email': 'User with this email does not exist.'})
         if not user.check_password(password):
             raise serializers.ValidationError({'password': 'Invalid password.'})
+        if not user.is_active:
+            raise serializers.ValidationError({'error': 'Account is inactive. please verify your email to activate your account.'})
         self.user = user
         return attrs
 
@@ -365,20 +384,106 @@ class DeleteAccountSerializer(serializers.Serializer):
         user = self.context['request'].user
         password = attrs.get('password')
         
-        # Check password
         if not user.check_password(password):
             raise serializers.ValidationError({'password': 'Invalid password.'})
         
         return attrs
+
+
+class VerifyEmailOTPSerializer(serializers.Serializer):
+    """Serializer for email verification using OTP"""
+    email = serializers.EmailField(required=True)
+    otp_code = serializers.CharField(required=True, max_length=6, min_length=6)
+    
+    def validate(self, attrs):
+        email = attrs.get('email')
+        otp_code = attrs.get('otp_code')
+        
+        try:
+            user = User.objects.get(email=email)
+            
+            if user.is_email_verified:
+                raise serializers.ValidationError({'email': 'This email is already verified.'})
+            
+            if not user.email_verification_otp:
+                raise serializers.ValidationError({'otp_code': 'No OTP found. Please request a new one.'})
+            
+            if user.is_verification_otp_expired():
+                raise serializers.ValidationError({'otp_code': 'OTP has expired. Please request a new one.'})
+            
+            # Check max attempts
+            if user.otp_attempts >= 5:
+                raise serializers.ValidationError({'otp_code': 'Maximum verification attempts exceeded. Please request a new OTP.'})
+            
+            # Verify OTP
+            if not user.check_verification_otp(otp_code):
+                user.otp_attempts += 1
+                user.save()
+                remaining = 5 - user.otp_attempts
+                raise serializers.ValidationError({'otp_code': f'Invalid OTP. {remaining} attempts remaining.'})
+            
+            self.user = user
+            return attrs
+            
+        except User.DoesNotExist:
+            raise serializers.ValidationError({'email': 'No account found with this email address.'})
     
     def save(self):
-        """Delete the user account and all related data"""
-        user = self.context['request'].user
+        """Mark email as verified"""
+        from .utils import send_verification_success_email
         
-        # Delete user (this will cascade delete profile and other related data)
-        user_email = user.email
-        user.delete()
+        self.user.is_email_verified = True
+        self.user.email_verification_otp = None
+        self.user.otp_expires_at = None
+        self.user.otp_attempts = 0
+        self.user.is_active = True
+        self.user.save()
         
-        return {'email': user_email}
+        # Send confirmation email
+        try:
+            send_verification_success_email(self.user)
+        except Exception as e:
+            print(f"Failed to send confirmation email: {str(e)}")
+        
+        return self.user
+
+
+class ResendVerificationOTPSerializer(serializers.Serializer):
+    """Serializer for resending verification OTP"""
+    email = serializers.EmailField(required=True)
+    
+    def validate(self, attrs):
+        """Validate email exists and needs verification"""
+        email = attrs.get('email')
+        try:
+            user = User.objects.get(email=email)
+            
+            if user.is_email_verified:
+                raise serializers.ValidationError({'email': 'This email is already verified.'})
+            
+            # Store user for save method
+            self.user = user
+            return attrs
+        except User.DoesNotExist:
+            raise serializers.ValidationError({'email': 'No account found with this email address.'})
+    
+    def save(self):
+        """Generate new OTP and send email"""
+        from .utils import send_verification_otp_email
+        
+        # Generate new OTP
+        otp = generate_otp(6)
+        self.user.email_verification_otp = make_password(otp)
+        self.user.otp_expires_at = timezone.now() + timedelta(minutes=10)
+        self.user.otp_attempts = 0
+        self.user.save()
+        
+        # Send verification OTP email
+        try:
+            send_verification_otp_email(self.user, otp)
+        except Exception as e:
+            raise serializers.ValidationError(f'Failed to send verification email: {str(e)}')
+        
+        return self.user
 
 

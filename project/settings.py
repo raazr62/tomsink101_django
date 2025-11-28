@@ -232,12 +232,12 @@ CORS_ALLOW_CREDENTIALS = True
 
 # email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'mail.privateemail.com'
-EMAIL_PORT = 465
-EMAIL_USE_SSL = True
-EMAIL_HOST_USER = 'support@softvencefsd.xyz'
-EMAIL_HOST_PASSWORD = 'onIhlk9t2BO1HRT8K10p'
-DEFAULT_FROM_EMAIL = 'support@softvencefsd.xyz'
+EMAIL_HOST = 'smtp.hostinger.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'tom@strenno.ai'
+EMAIL_HOST_PASSWORD = '24bL!2Vx'
+DEFAULT_FROM_EMAIL = 'tom@strenno.ai'
 
 
 # internal ips for debug toolbar settings

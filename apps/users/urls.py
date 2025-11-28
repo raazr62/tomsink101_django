@@ -12,6 +12,8 @@ from .views import (
     UpdateProfileView,
     ProfileGet,
     DeleteAccountView,
+    VerifyEmailOTPView,
+    ResendVerificationOTPView,
 )
 
 urlpatterns = [
@@ -20,6 +22,10 @@ urlpatterns = [
     path("signup/", SignUpView.as_view(), name="signup"),
     path("signin/", SignInView.as_view(), name="signin"),
     path("signout/", SignOutView.as_view(), name="signout"),
+
+    # Email Verification
+    path('verify-email-otp/', VerifyEmailOTPView.as_view(), name='verify-email-otp'),
+    path('resend-verification-otp/', ResendVerificationOTPView.as_view(), name='resend-verification-otp'),
 
     # password
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),

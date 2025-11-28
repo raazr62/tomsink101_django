@@ -5,9 +5,10 @@ from django.utils.html import format_html
 
 @admin.register(User)
 class CustomAdminClass(ModelAdmin):
-    list_display = ('id', 'email', 'name', 'preview_user_image', 'check_is_superuser')
+    list_display = ('id', 'email', 'name', 'is_email_verified', 'otp_attempts', 'preview_user_image', 'check_is_superuser')
     list_display_links = ('id', 'email', 'name', 'preview_user_image', 'check_is_superuser')
     search_fields = ('email', 'name')
+    list_filter = ('is_email_verified', 'is_active', 'is_superuser')
 
 
     def get_queryset(self, request):
