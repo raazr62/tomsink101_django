@@ -168,6 +168,7 @@ class PrelaunchLeaderboardView(APIView):
         serializer = ReferralLeaderboardSerializer(leaderboard, many=True)
         
         return Response({
+            'status': status.HTTP_200_OK,
             'success': True,
             'data': serializer.data
         })
@@ -225,6 +226,7 @@ class PrelaunchStatsView(APIView):
         serializer = PrelaunchStatsSerializer(stats_data)
         
         return Response({
+            'status': status.HTTP_200_OK,
             'success': True,
             'data': serializer.data
         })
@@ -244,8 +246,10 @@ class UserReferralsView(APIView):
         
         if not code:
             return Response({
-                'success': False,
-                'message': 'Referral code is required.'
+                "status": status.HTTP_400_BAD_REQUEST,
+                "success": False,
+                "message": "Referral code is required.",
+                "data": None
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
@@ -255,6 +259,7 @@ class UserReferralsView(APIView):
             serializer = PrelaunchReferralSerializer(referrals, many=True)
             
             return Response({
+                'status': status.HTTP_200_OK,
                 'success': True,
                 'user': {
                     'name': user.name,
@@ -267,8 +272,10 @@ class UserReferralsView(APIView):
             
         except PrelaunchUser.DoesNotExist:
             return Response({
-                'success': False,
-                'message': 'User not found.'
+                'status': status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "message": "User not found.",
+                "data": None
             }, status=status.HTTP_404_NOT_FOUND)
 
 
@@ -286,8 +293,10 @@ class CheckReferralCodeView(APIView):
         
         if not code:
             return Response({
-                'success': False,
-                'message': 'Referral code is required.'
+                "status": status.HTTP_400_BAD_REQUEST,
+                "success": False,
+                "message": "Referral code is required.",
+                "data": None
             }, status=status.HTTP_400_BAD_REQUEST)
         
         exists = PrelaunchUser.objects.filter(referral_code=code).exists()
@@ -295,18 +304,20 @@ class CheckReferralCodeView(APIView):
         if exists:
             user = PrelaunchUser.objects.get(referral_code=code)
             return Response({
-                'success': True,
-                'valid': True,
-                'user': {
-                    'name': user.name,
-                    'referral_code': user.referral_code,
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "valid": True,
+                "user": {
+                    "name": user.name,
+                    "referral_code": user.referral_code,
                 }
             })
         else:
             return Response({
-                'success': True,
-                'valid': False,
-                'message': 'Invalid referral code.'
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "valid": False,
+                "message": "Invalid referral code."
             })
 
 
@@ -324,16 +335,19 @@ class CheckEmailView(APIView):
         
         if not email:
             return Response({
-                'success': False,
-                'message': 'Email is required.'
+                "status": status.HTTP_400_BAD_REQUEST,
+                "success": False,
+                "message": "Email is required.",
+                "data": None
             }, status=status.HTTP_400_BAD_REQUEST)
         
         exists = PrelaunchUser.objects.filter(email=email).exists()
         
         return Response({
-            'success': True,
-            'exists': exists,
-            'message': 'Email is already registered.' if exists else 'Email is available.'
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "exists": exists,
+            "message": "Email is already registered." if exists else "Email is available."
         })
 
 
@@ -380,6 +394,7 @@ class FraudDetectionView(APIView):
                 })
         
         return Response({
-            'success': True,
-            'data': results
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "data": results
         })
