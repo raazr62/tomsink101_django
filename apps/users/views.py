@@ -276,4 +276,43 @@ class ResendVerificationOTPView(APIView):
             'message': 'Failed to resend verification OTP.',
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+from django.shortcuts import render
+from rest_framework.views import APIView
+from apps.users.serializers import GoogleSerializer
+from rest_framework.response import Response
+from rest_framework import status
+from apps.users.utils import register_with_google
+# Create your views here.
+
+class GoogleLoginView(APIView):
+    def post(self,request):
+        serializer = GoogleSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            data = (serializer.validated_data)['access_token']
+            return Response({
+                'status':status.HTTP_200_OK,
+                'success':True,
+                'message':'Login successful.',
+                'data':data
+            },status=status.HTTP_200_OK)
+        return Response({
+            'status':status.HTTP_400_BAD_REQUEST,
+            'success':False,
+            'message':'Login failed.',
+            'data':serializer.errors
+        },status=status.HTTP_400_BAD_REQUEST)
+        
+        
+from django.shortcuts import render
+from django.views import View
+from django.conf import settings
+
+class LoginPage(View):
+    def get(self, request):
+        return render(request, 'login.html',{
+            'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
+            'callback_url': settings.GOOGLE_OAUTH_CALLBACK_URL
+        })
 

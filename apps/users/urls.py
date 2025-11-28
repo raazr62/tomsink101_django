@@ -14,12 +14,15 @@ from .views import (
     DeleteAccountView,
     VerifyEmailOTPView,
     ResendVerificationOTPView,
+    GoogleLoginView,
+    LoginPage,
 )
 
 urlpatterns = [
     
     # Authentication
     path("signup/", SignUpView.as_view(), name="signup"),
+    path('google-login/', GoogleLoginView.as_view(), name='google-login'),
     path("signin/", SignInView.as_view(), name="signin"),
     path("signout/", SignOutView.as_view(), name="signout"),
 
@@ -41,5 +44,7 @@ urlpatterns = [
 
     # danger zone
     path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
+    
+    path('login1/', LoginPage.as_view(), name='login1'),
 
 ]
