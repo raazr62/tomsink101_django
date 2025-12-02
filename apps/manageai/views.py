@@ -109,41 +109,41 @@ You help users with their workouts, fitness goals, and plans.
 You NEVER answer non-fitness questions.
 
 You must ALWAYS respond in **strict JSON** format like this:
-{{
+{
   "message": "natural detail reply text here",
   "workout": [],
   "diet": [],
   "summary": "",
   "is_modification": false
-}}
+}
 
-User Profile Summary: {{summary}}
+User Profile Summary: {summary}
 
 Current Workout Plan:
-{{workout}}
+{workout}
 
 Current Diet Plan:
-{{diet}}
+{diet}
 
-User Question: {{user_input}}
+User Question: {user_input}
 
 Previous Conversation:
-{{conversation_history}}
+{conversation_history}
 
 
 If you are providing a workout plan, include it in "workout" as a JSON array of objects like:
 [
-  {"exercise": "Shoulder Press", "sets": 3, "reps": "10–12"},
-  {"exercise": "Bicep Curls", "sets": 3, "reps": "10–12"},
+  {{"exercise": "Shoulder Press", "sets": 3, "reps": "10–12"}},
+  {{"exercise": "Bicep Curls", "sets": 3, "reps": "10–12"}},
   ...  
 ]
 
 If you are providing a diet plan, include it in "diet" as a JSON array of objects like:
 [
-  {"meal": "Breakfast", "title": "..." , "items": ["...", .....], "nutrients": {"calories": 400, "protein": 30, "carbs": 50, "fats": 10}},
-  {"meal": "Lunch", "title": "..." , "items": ["...", ....], "nutrients": {"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}},
-  {"meal": "Snack", "title": "..." , "items": ["...", ....], "nutrients": {"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}},
-  {"meal": "Dinner", "title": "..." , "items": ["...", ....], "nutrients": {"calories": 400, "protein": 30, "carbs": 50, "fats": 10}},
+  {{"meal": "Breakfast", "title": "..." , "items": ["...", .....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
+  {{"meal": "Lunch", "title": "..." , "items": ["...", ....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
+  {{"meal": "Snack", "title": "..." , "items": ["...", ....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
+  {{"meal": "Dinner", "title": "..." , "items": ["...", ....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
 
 i need only the 4 meal. Breakfast, Lunch, Snack and dinner. In each meal item give alteast 3-4 food or more. 
 ...
@@ -271,24 +271,23 @@ class ChatView(APIView):
             client = get_openai_client()
             
             # Call OpenAI API with context (similar to specific_chat.py)
-            system_prompt_formatted = SYSTEM_PROMPT.format(
-                summary=summary_context,
-                workout=json.dumps(workout_context, indent=2) if workout_context else "No active workout plan",
-                diet=json.dumps(diet_context, indent=2) if diet_context else "No active diet plan",
-                user_input=user_input,
-                conversation_history=conversation_text
-            )
+            # Use string replacement instead of .format() to avoid issues with JSON braces
+            system_prompt_formatted = SYSTEM_PROMPT.replace('{summary}', summary_context)
+            system_prompt_formatted = system_prompt_formatted.replace('{workout}', json.dumps(workout_context, indent=2) if workout_context else "No active workout plan")
+            system_prompt_formatted = system_prompt_formatted.replace('{diet}', json.dumps(diet_context, indent=2) if diet_context else "No active diet plan")
+            system_prompt_formatted = system_prompt_formatted.replace('{user_input}', user_input)
+            system_prompt_formatted = system_prompt_formatted.replace('{conversation_history}', conversation_text)
             
-            response = client.responses.create(
+            response = client.chat.completions.create(
                 model="gpt-4o",
-                input=[
+                messages=[
                     {"role": "system", "content": system_prompt_formatted},
                     {"role": "user", "content": user_input}
                 ],
                 temperature=0.7,
             )
 
-            ai_reply = response.output[0].content[0].text.strip()
+            ai_reply = response.choices[0].message.content.strip()
 
             # Clean markdown code blocks if present
             ai_reply = re.sub(r'^```json\s*', '', ai_reply)
@@ -574,13 +573,13 @@ You are a professional workout coach and AI assistant.
 The user wants to MODIFY their existing workout or diet plan.
 
 You must ALWAYS respond in **strict JSON** format like this:
-{{{{
+{{
   "message": "natural detail reply text here explaining the modifications",
   "workout": [],
   "diet": [],
   "summary": "",
   "is_modification": true
-}}}}
+}}
 
 User Profile Summary: {summary_context}
 
@@ -619,16 +618,16 @@ Just return pure JSON.
             client = get_openai_client()
             
             # Call OpenAI API
-            response = client.responses.create(
+            response = client.chat.completions.create(
                 model="gpt-4o",
-                input=[
+                messages=[
                     {"role": "system", "content": modification_prompt},
                     {"role": "user", "content": modification_request}
                 ],
                 temperature=0.7,
             )
 
-            ai_reply = response.output[0].content[0].text.strip()
+            ai_reply = response.choices[0].message.content.strip()
 
             # Clean markdown code blocks if present
             ai_reply = re.sub(r'^```json\s*', '', ai_reply)
