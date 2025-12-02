@@ -133,11 +133,6 @@ class ChangePasswordSerializer(serializers.Serializer):
         if old_password == new_password:
             raise ValidationError({'error': 'The new password cannot be the same as the old password.'})
         
-        try:
-            validate_password(new_password, user)
-        except Exception as e:
-            raise ValidationError({'error': str(e.messages)})
-        
         return attrs
     
     def save(self):
