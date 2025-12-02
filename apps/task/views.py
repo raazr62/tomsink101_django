@@ -674,3 +674,61 @@ class MealToggleView(APIView):
                 'is_completed': meal.is_completed
             }
         }, status=status.HTTP_200_OK)
+
+
+class ResetAllTaskDataView(APIView):
+    """
+    API View for resetting all task-related data for the authenticated user.
+    This will delete all workout plans, diet plans, exercises, meals, and daily progress.
+    
+    DELETE: Reset all task data (requires confirmation)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        
+        # Get confirmation from request
+        confirm = request.data.get('confirm', False)
+        
+        if not confirm:
+            return Response({
+                "status": status.HTTP_400_BAD_REQUEST,
+                "success": False,
+                "message": "Please confirm deletion by sending 'confirm': true in the request body.",
+                "data": {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Count items before deletion
+            workout_plans_count = WorkoutPlan.objects.filter(user=user).count()
+            diet_plans_count = DietPlan.objects.filter(user=user).count()
+            daily_progress_count = DailyProgress.objects.filter(user=user).count()
+            
+            # Delete all task data for the user
+            # Due to CASCADE relationships, deleting plans will also delete exercises and meals
+            WorkoutPlan.objects.filter(user=user).delete()
+            DietPlan.objects.filter(user=user).delete()
+            DailyProgress.objects.filter(user=user).delete()
+            
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "All task data has been reset successfully",
+                "data": {
+                    "deleted_items": {
+                        "workout_plans": workout_plans_count,
+                        "diet_plans": diet_plans_count,
+                        "daily_progress": daily_progress_count
+                    },
+                    "reset_at": timezone.now()
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "message": "Failed to reset task data",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
