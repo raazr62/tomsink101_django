@@ -12,8 +12,13 @@ from django.contrib.auth.hashers import check_password
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_("email address"), unique=True)
     is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    is_email_verified = models.BooleanField(default=False)
+    email_verification_otp = models.CharField(max_length=255, blank=True, null=True)
+    otp_expires_at = models.DateTimeField(blank=True, null=True)
+    otp_attempts = models.IntegerField(default=0)
+    auth_provider = models.CharField(max_length=50, default='email')  # 'email', 'google', etc.
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -24,6 +29,18 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
+    def is_verification_otp_expired(self):
+        """Check if email verification OTP is expired"""
+        if not self.otp_expires_at:
+            return True
+        return timezone.now() > self.otp_expires_at
+    
+    def check_verification_otp(self, raw_otp):
+        """Check if the provided OTP matches the stored verification OTP"""
+        if not self.email_verification_otp:
+            return False
+        return check_password(raw_otp, self.email_verification_otp)
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -63,7 +80,4 @@ class OTP(models.Model):
 
     def check_otp(self, raw_otp):
         return check_password(raw_otp, self.otp)
-
-
-
 

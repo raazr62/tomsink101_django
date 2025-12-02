@@ -30,7 +30,12 @@ class WorkoutPlanListView(APIView):
     def get(self, request):
         workout_plans = WorkoutPlan.objects.filter(user=request.user)
         serializer = WorkoutPlanSerializer(workout_plans, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({   
+                            "status": status.HTTP_200_OK,
+                            "message": "Workout plans retrieved successfully",
+                            "data": serializer.data},
+                            status=status.HTTP_200_OK
+                        )  
 
 
 class WorkoutPlanDetailView(APIView):
@@ -205,7 +210,12 @@ class TaskDashboardView(APIView):
             'total_diet_plans': DietPlan.objects.filter(user=request.user).count(),
         }
         
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Dashboard data retrieved successfully",
+            "data": response_data
+        }, status=status.HTTP_200_OK)
 
 
 class WeeklyStatsView(APIView):
@@ -278,7 +288,12 @@ class WeeklyStatsView(APIView):
             'week_progress': 65  # Overall progress percentage
         }
         
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Weekly stats retrieved successfully",
+            "data": response_data
+        }, status=status.HTTP_200_OK)
 
 
 class WorkoutCalendarView(APIView):
@@ -316,7 +331,7 @@ class WorkoutCalendarView(APIView):
         expected_meals = active_diet.total_meals if active_diet else 4
         
         # Build calendar data
-        calendar_data = []
+        calendar_data = {}
         for day in range(1, last_day_num + 1):
             current_date = datetime(year, month, day).date()
             progress = progress_dict.get(current_date, None)
@@ -335,19 +350,24 @@ class WorkoutCalendarView(APIView):
             else:
                 status_type = 'rest'
             
-            calendar_data.append({
+            # Use date as key in the dictionary
+            calendar_data[current_date.isoformat()] = {
                 'day': day,
-                'date': current_date.isoformat(),
                 'status': status_type,
                 'exercises_completed': progress['exercises_completed'] if progress else 0,
                 'meals_completed': progress['meals_completed'] if progress else 0
-            })
+            }
         
         return Response({
-            'year': year,
-            'month': month,
-            'month_name': datetime(year, month, 1).strftime('%B %Y'),
-            'days': calendar_data
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Workout calendar retrieved successfully",
+            "data": {
+                'year': year,
+                'month': month,
+                'month_name': datetime(year, month, 1).strftime('%B %Y'),
+                **calendar_data
+            }
         }, status=status.HTTP_200_OK)
 
 
@@ -470,7 +490,12 @@ class DailyWorkoutDetailView(APIView):
             'daily_progress': DailyProgressSerializer(daily_progress).data if daily_progress else None
         }
         
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Dashboard data retrieved successfully",
+            "data": response_data
+        }, status=status.HTTP_200_OK)
 
 
 class ExerciseSetToggleView(APIView):
@@ -529,13 +554,23 @@ class ExerciseSetToggleView(APIView):
                 daily_progress.save()
             
             return Response({
-                'id': str(exercise.id),
-                'completed_sets': exercise.completed_sets,
-                'status': exercise.status,
-                'completion_percentage': exercise.completion_percentage
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "Exercise set toggled successfully",
+                "data": {
+                    'id': str(exercise.id),
+                    'completed_sets': exercise.completed_sets,
+                    'status': exercise.status,
+                    'completion_percentage': exercise.completion_percentage
+                }
             }, status=status.HTTP_200_OK)
         
-        return Response({'error': 'Invalid set number'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "success": False,
+            "message": "Invalid set number",
+            "data": None
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MealToggleView(APIView):
@@ -584,7 +619,12 @@ class MealToggleView(APIView):
             daily_progress.save()
         
         return Response({
-            'id': str(meal.id),
-            'status': meal.status,
-            'is_completed': meal.is_completed
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Meal toggled successfully",
+            "data": {
+                'id': str(meal.id),
+                'status': meal.status,
+                'is_completed': meal.is_completed
+            }
         }, status=status.HTTP_200_OK)
