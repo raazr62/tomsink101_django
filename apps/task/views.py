@@ -51,20 +51,31 @@ class WorkoutPlanDetailView(APIView):
     def get(self, request, plan_id):
         workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
         serializer = WorkoutPlanSerializer(workout_plan)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "message": "Workout plan retrieved successfully",
+            "data": serializer.data}, status=status.HTTP_200_OK)
 
     def patch(self, request, plan_id):
         workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
         serializer = WorkoutPlanSerializer(workout_plan, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "status": status.HTTP_200_OK,
+                "message": "Workout plan updated successfully",
+                "data": serializer.data}, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "message": "Invalid data",
+            "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, plan_id):
         workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
         workout_plan.delete()
-        return Response({'message': 'Workout plan deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            "status": status.HTTP_204_NO_CONTENT,
+            "message": "Workout plan deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 class ExerciseUpdateView(APIView):
@@ -89,9 +100,15 @@ class ExerciseUpdateView(APIView):
             
             exercise.save()
             response_serializer = ExerciseSerializer(exercise)
-            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                    "status": status.HTTP_200_OK,
+                    "message": "Exercise updated successfully",
+                    "data": response_serializer.data}, status=status.HTTP_200_OK)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "message": "Invalid data",
+            "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DietPlanListView(APIView):
@@ -105,7 +122,10 @@ class DietPlanListView(APIView):
     def get(self, request):
         diet_plans = DietPlan.objects.filter(user=request.user)
         serializer = DietPlanSerializer(diet_plans, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "message": "Diet plans retrieved successfully",
+            "data": serializer.data}, status=status.HTTP_200_OK)
 
 
 class DietPlanDetailView(APIView):
@@ -121,20 +141,31 @@ class DietPlanDetailView(APIView):
     def get(self, request, plan_id):
         diet_plan = get_object_or_404(DietPlan, id=plan_id, user=request.user)
         serializer = DietPlanSerializer(diet_plan)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "message": "Diet plan retrieved successfully",
+            "data": serializer.data}, status=status.HTTP_200_OK)
 
     def patch(self, request, plan_id):
         diet_plan = get_object_or_404(DietPlan, id=plan_id, user=request.user)
         serializer = DietPlanSerializer(diet_plan, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "status": status.HTTP_200_OK,
+                "message": "Diet plan updated successfully",
+                "data": serializer.data}, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "message": "Invalid data",
+            "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, plan_id):
         diet_plan = get_object_or_404(DietPlan, id=plan_id, user=request.user)
         diet_plan.delete()
-        return Response({'message': 'Diet plan deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            "status": status.HTTP_204_NO_CONTENT,
+            "message": "Diet plan deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 class MealUpdateView(APIView):
@@ -157,9 +188,15 @@ class MealUpdateView(APIView):
             
             meal.save()
             response_serializer = MealSerializer(meal)
-            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                "status": status.HTTP_200_OK,
+                "message": "Meal updated successfully",
+                "data": response_serializer.data}, status=status.HTTP_200_OK)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "message": "Invalid data",
+            "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DailyProgressView(APIView):
@@ -175,14 +212,23 @@ class DailyProgressView(APIView):
         date_str = request.query_params.get('date', timezone.now().date())
         progress = DailyProgress.objects.filter(user=request.user, date=date_str)
         serializer = DailyProgressSerializer(progress, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "message": "Daily progress retrieved successfully",
+            "data": serializer.data}, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = DailyProgressSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "message": "Daily progress created successfully",
+                "data": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "message": "Invalid data",
+            "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TaskDashboardView(APIView):
