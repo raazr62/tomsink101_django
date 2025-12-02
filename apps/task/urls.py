@@ -13,6 +13,7 @@ from .views import (
     DailyWorkoutDetailView,
     ExerciseSetToggleView,
     MealToggleView,
+    ResetAllTaskDataView,
 )
 
 urlpatterns = [
@@ -46,4 +47,7 @@ urlpatterns = [
     
     # Daily Progress
     path('progress/', DailyProgressView.as_view(), name='daily-progress'),
+    
+    # Reset All Task Data
+    path('reset/', ResetAllTaskDataView.as_view(), name='reset-all-task-data'),
 ]
