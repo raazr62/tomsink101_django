@@ -113,45 +113,36 @@ class SignOutSerializer(serializers.Serializer):
             return ValidationError({'error': str(e)})
 
 class ChangePasswordSerializer(serializers.Serializer):
-    email = serializers.CharField()
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
-    class Meta:
-        model = User
-        fields = ['email', 'name', 'old_password', 'new_password', 'confirm_password']
-
     def validate(self, attrs):
-        email = attrs.get('email')
         old_password = attrs.get('old_password')
         new_password = attrs.get('new_password')
         confirm_password = attrs.get('confirm_password')
 
-        user = User.objects.filter(email=email).first()
-        if not user:
-            raise ValidationError({'error': 'User not found.'})
+        user = self.context['request'].user
         
         if not user.check_password(old_password):
             raise ValidationError({'error': 'Old password is incorrect.'})
         
         if new_password != confirm_password:
-            raise ValidationError({'error': 'New password and confirm password is not match.'})
+            raise ValidationError({'error': 'New password and confirm password do not match.'})
         
         if old_password == new_password:
-            raise ValidationError({'error': 'The new password is not the same as the old password.'})
+            raise ValidationError({'error': 'The new password cannot be the same as the old password.'})
         
         try:
-            validate_password(new_password)
+            validate_password(new_password, user)
         except Exception as e:
             raise ValidationError({'error': str(e.messages)})
         
-        self.user = user
         return attrs
     
     def save(self):
+        user = self.context['request'].user
         new_password = self.validated_data['new_password']
-        user = self.user
         user.set_password(new_password)
         user.save()
         return user
