@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Successful</title>
+    <style>
+        body {
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .center {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 500px;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 300;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .tokens {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+            text-decoration: none;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="center">
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h1 class="title">Login Successful!</h1>
+        
+        <div class="user-info">
+            <h3>Welcome, {{ user_data.full_name }}</h3>
+            <p><strong>Email:</strong> {{ user_data.email }}</p>
+        </div>
+
+        <div class="tokens">
+            <p><strong>Access Token:</strong></p>
+            <div>{{ user_data.access_token }}</div>
+            <br>
+            <p><strong>Refresh Token:</strong></p>
+            <div>{{ user_data.refresh_token }}</div>
+        </div>
+
+        <a href="/" class="btn">Continue to App</a>
+        <button onclick="copyTokens()" class="btn">Copy Tokens</button>
+    </div>
+</div>
+
+<script>
+function copyTokens() {
+    const tokenData = {
+        access_token: "{{ user_data.access_token }}",
+        refresh_token: "{{ user_data.refresh_token }}",
+        email: "{{ user_data.email }}",
+        full_name: "{{ user_data.full_name }}"
+    };
+    
+    navigator.clipboard.writeText(JSON.stringify(tokenData, null, 2)).then(function() {
+        alert('Tokens copied to clipboard!');
+    }, function(err) {
+        alert('Failed to copy tokens');
+    });
+}
+
+// Auto-store in localStorage
+localStorage.setItem('access_token', "{{ user_data.access_token }}");
+localStorage.setItem('refresh_token', "{{ user_data.refresh_token }}");
+localStorage.setItem('user_email', "{{ user_data.email }}");
+localStorage.setItem('user_name', "{{ user_data.full_name }}");
+</script>
+</body>
+</html>

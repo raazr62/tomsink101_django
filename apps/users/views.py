@@ -282,37 +282,128 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from apps.users.serializers import GoogleSerializer
 from rest_framework.response import Response
+from django.shortcuts import render
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from apps.users.utils import register_with_google
-# Create your views here.
+from django.conf import settings
+from .serializers import GoogleSerializer
 
 class GoogleLoginView(APIView):
-    def post(self,request):
+    def post(self, request):
         serializer = GoogleSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            data = (serializer.validated_data)['access_token']
+            data = serializer.validated_data['access_token']
             return Response({
-                'status':status.HTTP_200_OK,
-                'success':True,
-                'message':'Login successful.',
-                'data':data
-            },status=status.HTTP_200_OK)
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'Login successful.',
+                'data': data
+            }, status=status.HTTP_200_OK)
         return Response({
-            'status':status.HTTP_400_BAD_REQUEST,
-            'success':False,
-            'message':'Login failed.',
-            'data':serializer.errors
-        },status=status.HTTP_400_BAD_REQUEST)
+            'status': status.HTTP_400_BAD_REQUEST,
+            'success': False,
+            'message': 'Login failed.',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GoogleLoginPageView(APIView):
+    """Serve the Google login page"""
+    permission_classes = []
+    
+    def get(self, request):
+        context = {
+            'google_client_id': settings.GOOGLE_CLIENT_ID,
+            'google_callback_uri': settings.GOOGLE_OAUTH_CALLBACK_URL or request.build_absolute_uri('/api/google-callback/')
+        }
+        return render(request, 'users/login.html', context)
+
+
+class GoogleTestView(APIView):
+    """Simple test endpoint for Google authentication"""
+    permission_classes = []
+    
+    def get(self, request):
+        # If it's a browser request, serve the test page
+        if 'text/html' in request.META.get('HTTP_ACCEPT', ''):
+            context = {
+                'google_client_id': settings.GOOGLE_CLIENT_ID,
+                'google_callback_uri': settings.GOOGLE_OAUTH_CALLBACK_URL or request.build_absolute_uri('/api/google-callback/')
+            }
+            return render(request, 'users/google_test.html', context)
+        
+        # If it's an API request, return JSON
+        return Response({
+            'google_client_id': settings.GOOGLE_CLIENT_ID,
+            'callback_url': settings.GOOGLE_OAUTH_CALLBACK_URL,
+            'test_endpoint': '/api/google-test/',
+            'message': 'Google authentication is configured'
+        })
+    
+    def post(self, request):
+        # Simple test with dummy token
+        return Response({
+            'status': 'success',
+            'message': 'Test endpoint working',
+            'received_data': request.data
+        })
+
+
+class GoogleCallbackView(APIView):
+    """Handle Google OAuth callback"""
+    permission_classes = []
+    
+    def get(self, request):
+        code = request.GET.get('code')
+        if not code:
+            return Response({
+                'error': 'Authorization code not provided'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Exchange code for access token
+        import requests
+        import json
+        
+        token_url = 'https://oauth2.googleapis.com/token'
+        token_data = {
+            'client_id': settings.GOOGLE_CLIENT_ID,
+            'client_secret': settings.GOOGLE_CLIENT_SECRET,
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': settings.GOOGLE_OAUTH_CALLBACK_URL or request.build_absolute_uri('/api/google-callback/')
+        }
+        
+        response = requests.post(token_url, data=token_data)
+        token_json = response.json()
+        
+        if 'access_token' not in token_json:
+            return Response({
+                'error': 'Failed to get access token',
+                'details': token_json
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Use the access token to authenticate
+        serializer = GoogleSerializer(data={'access_token': token_json['id_token']})
+        if serializer.is_valid():
+            user_data = serializer.validated_data['access_token']
+            
+            # Return success page or redirect
+            return render(request, 'users/login_success.html', {
+                'user_data': user_data
+            })
+        else:
+            return Response({
+                'error': 'Authentication failed',
+                'details': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         
 from django.shortcuts import render
-from django.views import View
-from django.conf import settings
 
-class LoginPage(View):
-    def get(self, request):
-        return render(request, 'login.html',{
-            'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-            'callback_url': settings.GOOGLE_OAUTH_CALLBACK_URL
-        })
+
+def dashboard(request):
+    context = {
+        'GOOGLE_CLIENT_ID': settings.GOOGLE_CLIENT_ID,
+    }
+    return render(request, 'users/login.html', context)
 

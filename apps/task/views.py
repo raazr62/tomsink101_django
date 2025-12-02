@@ -331,7 +331,7 @@ class WorkoutCalendarView(APIView):
         expected_meals = active_diet.total_meals if active_diet else 4
         
         # Build calendar data
-        calendar_data = []
+        calendar_data = {}
         for day in range(1, last_day_num + 1):
             current_date = datetime(year, month, day).date()
             progress = progress_dict.get(current_date, None)
@@ -350,13 +350,13 @@ class WorkoutCalendarView(APIView):
             else:
                 status_type = 'rest'
             
-            calendar_data.append({
+            # Use date as key in the dictionary
+            calendar_data[current_date.isoformat()] = {
                 'day': day,
-                'date': current_date.isoformat(),
                 'status': status_type,
                 'exercises_completed': progress['exercises_completed'] if progress else 0,
                 'meals_completed': progress['meals_completed'] if progress else 0
-            })
+            }
         
         return Response({
             "status": status.HTTP_200_OK,
@@ -366,7 +366,7 @@ class WorkoutCalendarView(APIView):
                 'year': year,
                 'month': month,
                 'month_name': datetime(year, month, 1).strftime('%B %Y'),
-                'days': calendar_data
+                **calendar_data
             }
         }, status=status.HTTP_200_OK)
 

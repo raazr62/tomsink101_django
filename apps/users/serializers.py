@@ -493,6 +493,10 @@ from apps.users.utils import Google, register_with_google
 from django.conf import settings
 from rest_framework.exceptions import AuthenticationFailed
 
+from rest_framework.exceptions import AuthenticationFailed
+from django.conf import settings
+from apps.users.utils import Google, register_with_google
+
 class GoogleSerializer(serializers.Serializer):
     access_token = serializers.CharField()
 
@@ -508,10 +512,11 @@ class GoogleSerializer(serializers.Serializer):
         
         user_id = user_data['sub']
         email = user_data['email']
-        name = user_data['given_name'] + ' ' + user_data['family_name']
+        first_name = user_data.get('given_name', '')
+        last_name = user_data.get('family_name', '')
 
         provider = 'google'
 
-        return register_with_google(provider, email, name)
+        return register_with_google(provider, email, first_name, last_name)
 
 

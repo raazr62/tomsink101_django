@@ -18,6 +18,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email_verification_otp = models.CharField(max_length=255, blank=True, null=True)
     otp_expires_at = models.DateTimeField(blank=True, null=True)
     otp_attempts = models.IntegerField(default=0)
+    auth_provider = models.CharField(max_length=50, default='email')  # 'email', 'google', etc.
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

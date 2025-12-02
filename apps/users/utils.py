@@ -66,10 +66,11 @@ Strenno Team
     
 from google.auth.transport import requests
 from google.oauth2 import id_token
-from apps.users.models import User
+from apps.users.models import User, Profile
 from django.contrib.auth import authenticate
 from django.conf import settings
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class Google():
@@ -92,35 +93,54 @@ class Google():
 def register_with_google(provider, email, first_name, last_name):
     old_user = User.objects.filter(email=email)
     if old_user.exists():
-        if provider == old_user[0].auth_provider:
-            register_user = authenticate(email=email, password=settings.GOOGLE_SECRET_KEY)
-            tokens = register_user.tokens()
+        user = old_user[0]
+        # If user exists, authenticate them
+        if hasattr(user, 'auth_provider') and provider == user.auth_provider:
+            refresh = RefreshToken.for_user(user)
             return {
-                'full_name': register_user.get_full_name(),
-                'email': register_user.email,
-                'refresh_token': str(tokens.get('refresh')),
-                'access_token': str(tokens.get('access')),
+                'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+                'email': user.email,
+                'refresh_token': str(refresh),
+                'access_token': str(refresh.access_token),
             }
-        
+        elif not hasattr(user, 'auth_provider'):
+            # Update existing user to have Google auth
+            user.auth_provider = provider
+            user.is_email_verified = True
+            user.is_active = True
+            user.save()
+            refresh = RefreshToken.for_user(user)
+            return {
+                'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+                'email': user.email,
+                'refresh_token': str(refresh),
+                'access_token': str(refresh.access_token),
+            }
         else:
-            raise AuthenticationFailed('Email is already registered with {} '.format(old_user[0].auth_provider))
-
+            raise AuthenticationFailed(f'Email is already registered with {getattr(user, "auth_provider", "another provider")}')
     else:
-        new_user = {
-            'email': email,
-            'first_name': first_name,
-            'last_name': last_name,
-            'password': settings.GOOGLE_SECRET_KEY
-        }
-        user = User.objects.create_user(**new_user)
+        # Create new user
+        user = User.objects.create_user(
+            email=email,
+            password=settings.GOOGLE_SECRET_KEY,
+            first_name=first_name,
+            last_name=last_name
+        )
         user.auth_provider = provider
-        user.is_verified = True
+        user.is_email_verified = True
+        user.is_active = True
         user.save()
-        login_user = authenticate(email=email, password=settings.GOOGLE_SECRET_KEY)
-        tokens = login_user.tokens()
+        
+        # Create profile
+        Profile.objects.create(
+            user=user,
+            name=f"{first_name} {last_name}".strip() or email
+        )
+        
+        refresh = RefreshToken.for_user(user)
         return {
-            'full_name': login_user.get_full_name(),
-            'email': login_user.email,
-            'refresh_token': str(tokens.get('refresh')),
-            'access_token': str(tokens.get('access')),
+            'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+            'email': user.email,
+            'refresh_token': str(refresh),
+            'access_token': str(refresh.access_token),
         }
