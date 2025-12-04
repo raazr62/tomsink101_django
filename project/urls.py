@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/', include('apps.manageai.urls')),
     path('api/', include('apps.task.urls')),
     path('api/', include('apps.subscription.urls')),
+    path('api/', include('apps.socialauth.urls')),
 ]
 
 if settings.DEBUG:

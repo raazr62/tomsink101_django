@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth Setup Required</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .alert h3 {
+            color: #856404;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .alert p {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .step {
+            margin-bottom: 35px;
+            padding-bottom: 35px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .step:last-child {
+            border-bottom: none;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            margin-right: 15px;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .step-title {
+            font-size: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .step-content {
+            margin-left: 55px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .code-block code {
+            display: block;
+            white-space: pre;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+
+        .info-box p {
+            color: #1565c0;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .success-box h3 {
+            color: #2e7d32;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .success-box p {
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .btn-test {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+
+        .btn-test:hover {
+            background: #5568d3;
+        }
+
+        ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin: 8px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Google OAuth Setup Required</h1>
+            <p>Follow these steps to enable Google Sign-In</p>
+        </div>
+
+        <div class="content">
+            <div class="alert">
+                <h3>⚠️ Configuration Missing</h3>
+                <p>Google Client ID is not configured. Please complete the setup steps below to enable Google authentication.</p>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <h2 class="step-title">Create Google Cloud Project</h2>
+                </div>
+                <div class="step-content">
+                    <p>Go to <a href="https://console.cloud.google.com/" target="_blank" class="link">Google Cloud Console</a></p>
+                    <ul>
+                        <li>Click "Select a project" → "New Project"</li>
+                        <li>Enter a project name (e.g., "My Django App")</li>
+                        <li>Click "Create"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">2</span>
+                    <h2 class="step-title">Enable Google+ API</h2>
+                </div>
+                <div class="step-content">
+                    <ul>
+                        <li>In the Google Cloud Console, go to "APIs & Services" → "Library"</li>
+                        <li>Search for "Google+ API"</li>
+                        <li>Click on it and press "Enable"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">3</span>
+                    <h2 class="step-title">Create OAuth 2.0 Credentials</h2>
+                </div>
+                <div class="step-content">
+                    <ul>
+                        <li>Go to "APIs & Services" → "Credentials"</li>
+                        <li>Click "Create Credentials" → "OAuth client ID"</li>
+                        <li>If prompted, configure the OAuth consent screen first</li>
+                        <li>Choose "Web application" as the application type</li>
+                        <li>Add authorized JavaScript origins:</li>
+                    </ul>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this, 'http://localhost:8000\nhttp://127.0.0.1:8000')">Copy</button>
+                        <code>http://localhost:8000
+http://127.0.0.1:8000</code>
+                    </div>
+                    <ul>
+                        <li>Add authorized redirect URIs:</li>
+                    </ul>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this, '{{ redirect_uri }}')">Copy</button>
+                        <code>{{ redirect_uri }}</code>
+                    </div>
+                    <ul>
+                        <li>Click "Create"</li>
+                        <li>Copy your <span class="highlight">Client ID</span> and <span class="highlight">Client Secret</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">4</span>
+                    <h2 class="step-title">Configure Environment Variables</h2>
+                </div>
+                <div class="step-content">
+                    <p>Add these to your <span class="highlight">.env</span> file in your project root:</p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this, envCode)">Copy</button>
+                        <code id="envCode">GOOGLE_CLIENT_ID=your_client_id_here
+GOOGLE_CLIENT_SECRET=your_client_secret_here
+GOOGLE_SECRET_KEY=your_secret_key_here
+GOOGLE_OAUTH_CALLBACK_URL={{ redirect_uri }}</code>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>💡 Tip:</strong> Create a <code>.env</code> file in your project root if it doesn't exist. Never commit this file to version control!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">5</span>
+                    <h2 class="step-title">Verify Settings Configuration</h2>
+                </div>
+                <div class="step-content">
+                    <p>Make sure your <span class="highlight">settings.py</span> has these lines:</p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this, settingsCode)">Copy</button>
+                        <code id="settingsCode">from decouple import config
+
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
+GOOGLE_SECRET_KEY = config('GOOGLE_SECRET_KEY')
+GOOGLE_OAUTH_CALLBACK_URL = os.getenv('GOOGLE_OAUTH_CALLBACK_URL')</code>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>📦 Required Package:</strong> Install python-decouple if not already: <code>pip install python-decouple</code></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-header">
+                    <span class="step-number">6</span>
+                    <h2 class="step-title">Restart Django Server</h2>
+                </div>
+                <div class="step-content">
+                    <p>After adding the environment variables, restart your Django development server:</p>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this, 'python manage.py runserver')">Copy</button>
+                        <code>python manage.py runserver</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="success-box">
+                <h3>🎉 Ready to Test!</h3>
+                <p>Once you've completed all steps above, refresh this page to test Google Sign-In</p>
+                <a href="javascript:window.location.reload()" class="btn-test">🔄 Refresh Page</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyCode(button, text) {
+            const codeText = typeof text === 'string' ? text : document.getElementById(text).textContent;
+            navigator.clipboard.writeText(codeText).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+    </script>
+</body>
+</html>

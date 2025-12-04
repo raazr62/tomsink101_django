@@ -6,6 +6,7 @@ from .views import (
     ChatSessionCreateView,
     ChatSessionPlansView,
     ModifyPlanView,
+    LastChatSessionView,
 )
 
 urlpatterns = [
@@ -18,6 +19,7 @@ urlpatterns = [
     # Session management
     path('sessions/', ChatSessionListView.as_view(), name='chat-sessions-list'),
     path('sessions/create/', ChatSessionCreateView.as_view(), name='chat-session-create'),
+    path('sessions/last/', LastChatSessionView.as_view(), name='last-chat-session'),
     path('sessions/<uuid:session_id>/', ChatSessionDetailView.as_view(), name='chat-session-detail'),
     path('sessions/<uuid:session_id>/plans/', ChatSessionPlansView.as_view(), name='chat-session-plans'),
 ]

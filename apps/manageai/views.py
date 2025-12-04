@@ -421,6 +421,35 @@ class ChatSessionDetailView(APIView):
             )
 
 
+class LastChatSessionView(APIView):
+    """
+    API View for retrieving the user's most recent chat session.
+    
+    GET: Retrieve last session with all messages
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get the most recent session for the user
+        session = ChatSession.objects.filter(user=request.user).order_by('-updated_at').first()
+        
+        if not session:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "message": "No chat sessions found",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = ChatSessionDetailSerializer(session)
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Last chat session retrieved successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
 class ChatSessionCreateView(APIView):
     """
     API View for creating a new chat session.
