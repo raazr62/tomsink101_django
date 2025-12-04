@@ -78,6 +78,10 @@ INSTALLED_APPS = [
     "apps.manageai",
     "apps.task",
     "apps.subscription",
+    
+    
+    # social auth app
+    "apps.socialauth",
 
 ]
 
