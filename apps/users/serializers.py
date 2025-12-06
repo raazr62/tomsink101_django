@@ -49,6 +49,7 @@ class SignUpSerializer(serializers.ModelSerializer):
         user.otp_expires_at = timezone.now() + timedelta(minutes=10)
         user.otp_attempts = 0
         user.save()
+        
 
         # Send verification OTP email
         try:
@@ -59,14 +60,22 @@ class SignUpSerializer(serializers.ModelSerializer):
 
         return user
     
+
+    
     def to_representation(self, instance):
+        refresh = RefreshToken.for_user(instance)
         return {
             'id': instance.id,
             'name': instance.profile.name,
             'email': instance.email,
             'is_email_verified': instance.is_email_verified,
-            'message': 'Account created successfully. Please check your email to verify your account.'
+            'message': 'Account created successfully. Please check your email to verify your account.',
+            'tokens' : {
+                "token_type": "Bearer",
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh),
         }
+    }
 
 
 class SignInSerializer(serializers.Serializer):
@@ -80,7 +89,7 @@ class SignInSerializer(serializers.Serializer):
         password = attrs.get('password')
         user = User.objects.filter(email=attrs['email']).first()
         if not user:
-           raise serializers.ValidationError({'email': 'User with this email does not exist.'})
+            raise serializers.ValidationError({'email': 'User with this email does not exist.'})
         if not user.check_password(password):
             raise serializers.ValidationError({'password': 'Invalid password.'})
         if not user.is_active and not user.is_email_verified:
