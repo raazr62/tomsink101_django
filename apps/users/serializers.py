@@ -70,12 +70,10 @@ class SignUpSerializer(serializers.ModelSerializer):
             'email': instance.email,
             'is_email_verified': instance.is_email_verified,
             'message': 'Account created successfully. Please check your email to verify your account.',
-            'tokens' : {
-                "token_type": "Bearer",
-                "access_token": str(refresh.access_token),
-                "refresh_token": str(refresh),
+            "token_type": "Bearer",
+            "access_token": str(refresh.access_token),
+            "refresh_token": str(refresh),
         }
-    }
 
 
 class SignInSerializer(serializers.Serializer):
