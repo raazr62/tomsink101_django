@@ -262,14 +262,12 @@ class VerifyOTPSerializer(serializers.Serializer):
 
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    otp = serializers.CharField(max_length=6)
     purpose = serializers.CharField()
     new_password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
         email = data['email']
-        otp = data['otp']
         purpose = data['purpose']
         new_password = data['new_password']
         confirm_password = data['confirm_password']
@@ -279,13 +277,6 @@ class ResetPasswordSerializer(serializers.Serializer):
             otp_obj = OTP.objects.get(user=user, purpose=purpose)
         except (User.DoesNotExist, OTP.DoesNotExist):
             raise serializers.ValidationError({'error': "Invalid credentials or OTP."})
-
-        if otp_obj.is_expired():
-            otp_obj.delete()
-            raise serializers.ValidationError({'error': "OTP has expired."})
-
-        if not otp_obj.check_otp(otp):
-            raise serializers.ValidationError({'error': "Incorrect OTP."})
         
         if not otp_obj.is_verify:
             raise serializers.ValidationError({'error': 'OTP not verified yet. Please verify OTP first.'})
@@ -295,13 +286,10 @@ class ResetPasswordSerializer(serializers.Serializer):
 
         try:
             validate_password(new_password, user)
-            print("Password validation passed")
-        except serializers.ValidationError as e:
-            raise serializers.ValidationError({'error': str(e.messages)})
+        except ValidationError as e:
+            raise serializers.ValidationError({'error': list(e.messages)})
 
         data['user'] = user
-        print(data)
-        print(data['user'])
         return data
 
     def save(self):
