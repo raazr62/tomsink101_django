@@ -89,7 +89,7 @@ class SignInSerializer(serializers.Serializer):
         password = attrs.get('password')
         user = User.objects.filter(email=attrs['email']).first()
         if not user:
-           raise serializers.ValidationError({'email': 'User with this email does not exist.'})
+            raise serializers.ValidationError({'email': 'User with this email does not exist.'})
         if not user.check_password(password):
             raise serializers.ValidationError({'password': 'Invalid password.'})
         if not user.is_active and not user.is_email_verified:
