@@ -43,7 +43,8 @@ class GoogleAuthView(APIView):
         except User.DoesNotExist:
             user = User.objects.create_user(
                 email=email,
-                password="passworasldfjadslfh@#@32"
+                password="passworasldfjadslfh@#@32",
+                auth_provider='google'
             )
             if picture:
                 image_response = requests.get(picture)
