@@ -12,6 +12,11 @@ class AboutSystemAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+    
+    def changelist_view(self, request, extra_context=None):
+        # Ensure default instance exists
+        AboutSystem.get_instance()
+        return super().changelist_view(request, extra_context)
 
     # def preview_logo(self, obj):
     #     if obj.logo:
@@ -42,6 +47,11 @@ class SMTPSettingAdmin(ModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         return False
+    
+    def changelist_view(self, request, extra_context=None):
+        # Ensure default instance exists
+        SMTPSetting.get_instance()
+        return super().changelist_view(request, extra_context)
 
 
 @admin.register(SocialMedia)
@@ -77,5 +87,10 @@ class SystemColorAdmin(ModelAdmin):
     list_display = ("id", "name", "code", "is_active",)
     search_fields = ("id", "name", "code",)
     list_display_links = ("id", "name", "code",)
+    
+    def changelist_view(self, request, extra_context=None):
+        # Ensure default instance exists
+        SystemColor.get_instance()
+        return super().changelist_view(request, extra_context)
 
 
