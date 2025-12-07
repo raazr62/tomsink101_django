@@ -48,23 +48,30 @@ class GoogleAuthView(APIView):
                 is_active=True,
                 is_email_verified=True
             )
-            if picture:
-                image_response = requests.get(picture)
-                if image_response.status_code == 200:
-                    file_name = f"profile_{uuid4().hex}.jpg"  
-                    if hasattr(user, 'avatar'):
-                        user.avatar.save(file_name, ContentFile(image_response.content))
-
-
-            Profile.objects.create(
+            
+            # Create profile
+            profile = Profile.objects.create(
                 user=user,
-                name=given_name + " " + family_name
+                name=f"{given_name} {family_name}" if given_name and family_name else name
             )
+            
+            # Download and save avatar if available
+            if picture:
+                try:
+                    image_response = requests.get(picture, timeout=10)
+                    if image_response.status_code == 200:
+                        file_name = f"profile_{uuid4().hex}.jpg"
+                        profile.avatar.save(file_name, ContentFile(image_response.content), save=True)
+                except Exception as e:
+                    # Log error but don't fail the authentication
+                    pass
         
         refresh = RefreshToken.for_user(user)
         return success({
             'id': user.id,
+            'name': user.profile.name if hasattr(user, 'profile') else '',
             'email': user.email,
+            'avatar': user.profile.avatar.url if hasattr(user, 'profile') and user.profile.avatar else None,
             'provider': user.auth_provider,
             'is_google': user.auth_provider == 'google',
             'access_token': str(refresh.access_token),

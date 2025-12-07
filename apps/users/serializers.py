@@ -102,6 +102,7 @@ class SignInSerializer(serializers.Serializer):
         refresh = RefreshToken.for_user(user)
         return {
             'id': user.id,
+            'name': user.profile.name if hasattr(user, 'profile') else '',
             'email': user.email,
             'provider': user.auth_provider,
             'is_google': user.auth_provider == 'google',
