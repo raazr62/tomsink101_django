@@ -18,7 +18,8 @@ def dashboard_callback(request, context):
     else:
         start_of_next_month = now.replace(month=now.month + 1, day=1)
 
-    system_color = SystemColor.objects.filter(is_active=True).first().code
+    system_color_obj = SystemColor.objects.filter(is_active=True).first()
+    system_color = system_color_obj.code if system_color_obj else "#000000"
 
     context.update(
         {

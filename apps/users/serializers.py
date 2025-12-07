@@ -71,6 +71,8 @@ class SignUpSerializer(serializers.ModelSerializer):
             'is_email_verified': instance.is_email_verified,
             'message': 'Account created successfully. Please check your email to verify your account.',
             "token_type": "Bearer",
+            "provider": instance.auth_provider,
+            'is_google': instance.auth_provider == 'google',
             "access_token": str(refresh.access_token),
             "refresh_token": str(refresh),
         }
@@ -101,6 +103,8 @@ class SignInSerializer(serializers.Serializer):
         return {
             'id': user.id,
             'email': user.email,
+            'provider': user.auth_provider,
+            'is_google': user.auth_provider == 'google',
             'refresh_token': str(refresh),
             'access_token': str(refresh.access_token)
         }
