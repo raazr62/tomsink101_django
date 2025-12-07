@@ -28,6 +28,7 @@ from .serializers import (
 )
 from django.http import Http404
 from apps.utils.helpers import success, error
+from django.conf import settings
 
 
 # Create your views here.
@@ -182,7 +183,7 @@ class ProfileGet(APIView):
             'email': profile.user.email,
             'name': profile.name,
             'accepted_terms': profile.accepted_terms,
-            'avatar_url': profile.avatar.url if profile.avatar else None,
+            'avatar_url': settings.BACKEND_URL + profile.avatar.url if profile.avatar else None,
             'created_at': profile.created_at,
             'updated_at': profile.updated_at,
         }
