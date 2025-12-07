@@ -44,7 +44,9 @@ class GoogleAuthView(APIView):
             user = User.objects.create_user(
                 email=email,
                 password="passworasldfjadslfh@#@32",
-                auth_provider='google'
+                auth_provider='google',
+                is_active=True,
+                is_email_verified=True
             )
             if picture:
                 image_response = requests.get(picture)
@@ -61,6 +63,10 @@ class GoogleAuthView(APIView):
         
         refresh = RefreshToken.for_user(user)
         return success({
+            'id': user.id,
+            'email': user.email,
+            'provider': user.auth_provider,
+            'is_google': user.auth_provider == 'google',
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh),
         })
