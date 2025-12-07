@@ -51,7 +51,7 @@ def get_unfold_settings():
         "SHOW_BACK_BUTTON": True,  # show/hide "Back" button on changeform in header, default: False
         # "THEME": "light",
         "LOGIN": {
-            "image": lambda request: static("sample/login-bg.jpg"),
+            "image": lambda request: static("logo/login.png"),
             "redirect_after": lambda request: reverse_lazy("admin:APP_MODEL_changelist"),
         },
         "BORDER_RADIUS": "6px",
@@ -72,12 +72,39 @@ def get_unfold_settings():
                 {
                     "title": _("User Management"),
                     "separator": True,  # Top border
-                    "collapsible": True,  # Collapsible group of links
+                    "collapsible": False,  # Collapsible group of links
                     "items": [
                         {
                             "title": _("Users"),
                             "icon": "people",
                             "link": reverse_lazy("admin:users_user_changelist"),
+                        },
+                    ],
+                },
+                {
+                    "title": _("Subscription Management"),
+                    "separator": True,  # Top border
+                    "collapsible": False,  # Collapsible group of links
+                    "items": [
+                        {
+                            "title": _("Packages"),
+                            "icon": "package_2",
+                            "link": reverse_lazy("admin:subscription_package_changelist"),
+                        },
+                        {
+                            "title": _("Subscribers"),
+                            "icon": "how_to_reg",
+                            "link": reverse_lazy("admin:subscription_subscription_changelist"),
+                        },
+                        {
+                            "title": _("Pricing Sections"),
+                            "icon": "barcode_reader",
+                            "link": reverse_lazy("admin:subscription_pricingsection_changelist"),
+                        },
+                        {
+                            "title": _("Package Features"),
+                            "icon": "featured_play_list",
+                            "link": reverse_lazy("admin:subscription_packagefeature_changelist"),
                         },
                     ],
                 },
@@ -192,6 +219,55 @@ def get_unfold_settings():
                             "title": _("Settings"),
                             "icon": "settings",
                             "link": reverse_lazy("admin:review_reviewsettings_changelist"),
+                        },
+                    ],
+                },
+                {
+                    "title": _("AI Chat Management"),
+                    "separator": True,
+                    "collapsible": True,
+                    "items": [
+                        {
+                            "title": _("User Chats Sessions"),
+                            "icon": "assistant_device",
+                            "link": reverse_lazy("admin:manageai_chatsession_changelist"),
+                        },
+                        {
+                            "title": _("AI Chat Messages"),
+                            "icon": "assistant_on_hub",
+                            "link": reverse_lazy("admin:manageai_chatmessage_changelist"),
+                        },
+                    ],
+                },
+                {
+                    "title": _("User Task Management"),
+                    "separator": True,
+                    "collapsible": True,
+                    "items": [
+                        {
+                            "title": _("User Workout Sessions"),
+                            "icon": "directions_run",
+                            "link": reverse_lazy("admin:task_workoutplan_changelist"),
+                        },
+                        {
+                            "title": _("User Exercises"),
+                            "icon": "exercise",
+                            "link": reverse_lazy("admin:task_exercise_changelist"),
+                        },
+                        {
+                            "title": _("User Diet Plans"),
+                            "icon": "nutrition",
+                            "link": reverse_lazy("admin:task_dietplan_changelist"),
+                        },
+                        {
+                            "title": _("User Meals"),
+                            "icon": "skillet",
+                            "link": reverse_lazy("admin:task_meal_changelist"),
+                        },
+                        {
+                            "title": _("User Daily Progress"),
+                            "icon": "area_chart",
+                            "link": reverse_lazy("admin:task_dailyprogress_changelist"),
                         },
                     ],
                 },

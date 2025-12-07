@@ -13,6 +13,20 @@ class AboutSystem(models.Model):
 
     def __str__(self):
         return self.title
+    
+    @classmethod
+    def get_instance(cls):
+        """Get the first AboutSystem instance or create a default one"""
+        instance = cls.objects.first()
+        if not instance:
+            instance = cls.objects.create(
+                name='System',
+                title='Admin Panel',
+                email='admin@example.com',
+                copyright='© 2025 All Rights Reserved',
+                description='System Administration Panel'
+            )
+        return instance
 
 class DynamicPages(models.Model):
     title = models.CharField(max_length=255)
@@ -50,6 +64,23 @@ class SMTPSetting(models.Model):
             'EMAIL_USE_TLS': self.encryption == 'tls',
             'EMAIL_USE_SSL': self.encryption == 'ssl',
         }
+    
+    @classmethod
+    def get_instance(cls):
+        """Get the active SMTP instance or create a default one"""
+        instance = cls.objects.filter(is_active=True).first()
+        if not instance:
+            instance = cls.objects.create(
+                host='smtp.gmail.com',
+                port=587,
+                username='noreply@example.com',
+                password='your-app-password',
+                encryption='tls',
+                sender_name='System',
+                sender_email='noreply@example.com',
+                is_active=True
+            )
+        return instance
 
 
 class SocialMedia(models.Model):
@@ -65,3 +96,15 @@ class SystemColor(models.Model):
 
     def __str__(self):
         return self.name
+    
+    @classmethod
+    def get_instance(cls):
+        """Get the active color instance or create a default one"""
+        instance = cls.objects.filter(is_active=True).first()
+        if not instance:
+            instance = cls.objects.create(
+                name='Default Blue',
+                code='#0066cc',
+                is_active=True
+            )
+        return instance
