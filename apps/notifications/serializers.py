@@ -19,7 +19,6 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             'daily_checkin_reminders',
             'milestone_achievements',
             'ai_insights_and_tips',
-            'push_notifications',
             'created_at',
             'updated_at',
         ]
