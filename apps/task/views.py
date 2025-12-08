@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db.models import Count, Sum, Q
 from datetime import datetime, timedelta
 from calendar import monthrange
-from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
 from apps.manageai.models import ChatSession, ChatMessage
 from .serializers import (
     WorkoutPlanSerializer,
@@ -16,7 +16,10 @@ from .serializers import (
     MealSerializer,
     DailyProgressSerializer,
     ExerciseUpdateSerializer,
-    MealUpdateSerializer
+    MealUpdateSerializer,
+    WorkoutReviewSerializer,
+    WorkoutReviewCreateSerializer,
+    WorkoutReviewOptionsSerializer
 )
 
 
@@ -742,3 +745,117 @@ class ResetAllTaskDataView(APIView):
                 "message": "Failed to reset task data",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WorkoutReviewOptionsView(APIView):
+    """
+    API View for getting workout review form options.
+    
+    GET: Get all available options for the review form
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        options = {
+            'difficulty_options': [
+                {'value': choice[0], 'label': choice[1]} 
+                for choice in WorkoutReview.DIFFICULTY_CHOICES
+            ],
+            'target_hit_options': [
+                {'value': choice[0], 'label': choice[1]} 
+                for choice in WorkoutReview.TARGET_HIT_CHOICES
+            ],
+            'energy_level_options': [
+                {'value': choice[0], 'label': choice[1]} 
+                for choice in WorkoutReview.ENERGY_LEVEL_CHOICES
+            ],
+            'body_feeling_options': [
+                {'value': choice[0], 'label': choice[1]} 
+                for choice in WorkoutReview.BODY_FEELING_CHOICES
+            ],
+            'satisfaction_options': [
+                {'value': choice[0], 'label': choice[1]} 
+                for choice in WorkoutReview.SATISFACTION_CHOICES
+            ],
+        }
+        
+        serializer = WorkoutReviewOptionsSerializer(options)
+        
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Workout review options retrieved successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class WorkoutReviewView(APIView):
+    """
+    API View for creating and retrieving workout reviews.
+    
+    GET: Get review for a specific workout plan
+    POST: Submit a review for a workout plan
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, plan_id):
+        """Get existing review for a workout plan."""
+        workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
+        
+        try:
+            review = WorkoutReview.objects.get(workout_plan=workout_plan, user=request.user)
+            serializer = WorkoutReviewSerializer(review)
+            
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "Workout review retrieved successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except WorkoutReview.DoesNotExist:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "message": "No review found for this workout plan",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request, plan_id):
+        """Submit or update a review for a workout plan."""
+        workout_plan = get_object_or_404(WorkoutPlan, id=plan_id, user=request.user)
+        
+        # Check if review already exists
+        try:
+            review = WorkoutReview.objects.get(workout_plan=workout_plan, user=request.user)
+            # Update existing review
+            serializer = WorkoutReviewCreateSerializer(
+                review, 
+                data=request.data, 
+                context={'request': request},
+                partial=True
+            )
+        except WorkoutReview.DoesNotExist:
+            # Create new review
+            serializer = WorkoutReviewCreateSerializer(
+                data=request.data, 
+                context={'request': request}
+            )
+        
+        if serializer.is_valid():
+            serializer.save(user=request.user, workout_plan=workout_plan)
+            
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "success": True,
+                "message": "Workout review submitted successfully",
+                "data": WorkoutReviewSerializer(
+                    WorkoutReview.objects.get(workout_plan=workout_plan, user=request.user)
+                ).data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "success": False,
+            "message": "Invalid review data",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)

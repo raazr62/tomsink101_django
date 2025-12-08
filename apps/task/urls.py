@@ -14,6 +14,8 @@ from .views import (
     ExerciseSetToggleView,
     MealToggleView,
     ResetAllTaskDataView,
+    WorkoutReviewOptionsView,
+    WorkoutReviewView,
 )
 
 urlpatterns = [
@@ -50,4 +52,8 @@ urlpatterns = [
     
     # Reset All Task Data
     path('reset/', ResetAllTaskDataView.as_view(), name='reset-all-task-data'),
+    
+    # Workout Reviews
+    path('review/options/', WorkoutReviewOptionsView.as_view(), name='workout-review-options'),
+    path('workout-plans/<uuid:plan_id>/review/', WorkoutReviewView.as_view(), name='workout-review'),
 ]

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
 
 
 class ExerciseSerializer(serializers.ModelSerializer):
@@ -78,3 +78,44 @@ class MealUpdateSerializer(serializers.Serializer):
     """Serializer for updating meal status."""
     status = serializers.ChoiceField(choices=Meal.STATUS_CHOICES, required=False)
     notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class WorkoutReviewSerializer(serializers.ModelSerializer):
+    """Serializer for Workout Review."""
+    workout_plan_name = serializers.CharField(source='workout_plan.name', read_only=True)
+    
+    class Meta:
+        model = WorkoutReview
+        fields = [
+            'id', 'workout_plan', 'workout_plan_name', 'user', 'reps_completed', 
+            'difficulty', 'target_hit', 'energy_level', 'body_feeling', 
+            'satisfaction', 'feedback', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+
+class WorkoutReviewCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating Workout Review."""
+    
+    class Meta:
+        model = WorkoutReview
+        fields = [
+            'workout_plan', 'reps_completed', 'difficulty', 'target_hit', 
+            'energy_level', 'body_feeling', 'satisfaction', 'feedback'
+        ]
+    
+    def validate_workout_plan(self, value):
+        """Ensure the workout plan belongs to the user."""
+        user = self.context['request'].user
+        if value.user != user:
+            raise serializers.ValidationError("This workout plan does not belong to you.")
+        return value
+
+
+class WorkoutReviewOptionsSerializer(serializers.Serializer):
+    """Serializer for Workout Review form options."""
+    difficulty_options = serializers.ListField(child=serializers.DictField())
+    target_hit_options = serializers.ListField(child=serializers.DictField())
+    energy_level_options = serializers.ListField(child=serializers.DictField())
+    body_feeling_options = serializers.ListField(child=serializers.DictField())
+    satisfaction_options = serializers.ListField(child=serializers.DictField())
