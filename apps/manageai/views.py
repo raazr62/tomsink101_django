@@ -51,6 +51,7 @@ def save_workout_plan_as_task(user, session, workout_data, summary):
             name=exercise_data.get('exercise', 'Unnamed Exercise'),
             sets=exercise_data.get('sets', 3),
             reps=str(exercise_data.get('reps', '10-12')),
+            description=exercise_data.get('description', ''),
             order=index,
             status='pending'
         )
@@ -133,9 +134,11 @@ Previous Conversation:
 
 If you are providing a workout plan, include it in "workout" as a JSON array of objects like:
 [
-  {{"exercise": "Shoulder Press", "sets": 3, "reps": "10–12"}},
-  {{"exercise": "Bicep Curls", "sets": 3, "reps": "10–12"}},
-  ...  
+    {"exercise": "Shoulder Press", "sets": 3, "reps": "10–12",
+    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid."},
+    {"exercise": "Bicep Curls", "sets": 3, "reps": "10–12",
+    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid."},
+    ...  
 ]
 
 If you are providing a diet plan, include it in "diet" as a JSON array of objects like:
@@ -228,7 +231,8 @@ class ChatView(APIView):
                 workout_context.append({
                     "exercise": exercise.name,
                     "sets": exercise.sets,
-                    "reps": exercise.reps
+                    "reps": exercise.reps,
+                    "description": exercise.description or ""
                 })
         
         # Build diet context
@@ -561,7 +565,8 @@ class ModifyPlanView(APIView):
                 workout_context.append({
                     "exercise": exercise.name,
                     "sets": exercise.sets,
-                    "reps": exercise.reps
+                    "reps": exercise.reps,
+                    "description": exercise.description or ""
                 })
         
         # Build diet context from the specified plan
@@ -634,7 +639,7 @@ IMPORTANT INSTRUCTIONS:
 8. Maintain the same format as the original plan
 9. In "message", explain what changes you made and why
 
-Workout format: [{{"exercise": "name", "sets": 3, "reps": "10-12"}}]
+Workout format: [{{"exercise": "name", "sets": 3, "reps": "10-12", "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid."}}]
 Diet format: [{{"meal": "Breakfast/Lunch/Snack/Dinner", "title": "...", "items": [...], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}}]
 
 Never include extra text outside JSON.
