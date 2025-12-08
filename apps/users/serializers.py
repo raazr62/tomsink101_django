@@ -337,6 +337,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 # UserProfile
 class UserProfileSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -349,14 +350,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+    
+    def get_avatar(self, obj):
+        """Return full avatar URL with backend domain"""
+        if obj.avatar:
+            backend_url = settings.BACKEND_URL
+            if backend_url:
+                return f"{backend_url}{obj.avatar.url}"
+            return obj.avatar.url
+        return None
 
 
 class DeleteAccountSerializer(serializers.Serializer):
     """
     Serializer for account deletion
-    Requires password confirmation before deletion
+    Requires confirmation before deletion
     """
-    password = serializers.CharField(write_only=True, required=True)
     confirm_deletion = serializers.BooleanField(required=True)
     
     def validate_confirm_deletion(self, value):
@@ -365,15 +374,12 @@ class DeleteAccountSerializer(serializers.Serializer):
             raise serializers.ValidationError("You must confirm account deletion.")
         return value
     
-    def validate(self, attrs):
-        """Validate password and check if user can be deleted"""
+    def save(self):
+        """Delete the user account"""
         user = self.context['request'].user
-        password = attrs.get('password')
-        
-        if not user.check_password(password):
-            raise serializers.ValidationError({'password': 'Invalid password.'})
-        
-        return attrs
+        email = user.email
+        user.delete()
+        return email
 
 
 class VerifyEmailOTPSerializer(serializers.Serializer):
