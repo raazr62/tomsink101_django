@@ -8,6 +8,7 @@ from django.db.models import Count, Sum, Q
 from datetime import datetime, timedelta
 from calendar import monthrange
 from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
+from apps.manageai.models import ChatSession, ChatMessage
 from .serializers import (
     WorkoutPlanSerializer,
     ExerciseSerializer,
@@ -704,22 +705,29 @@ class ResetAllTaskDataView(APIView):
             workout_plans_count = WorkoutPlan.objects.filter(user=user).count()
             diet_plans_count = DietPlan.objects.filter(user=user).count()
             daily_progress_count = DailyProgress.objects.filter(user=user).count()
+            chat_sessions_count = ChatSession.objects.filter(user=user).count()
+            chat_messages_count = ChatMessage.objects.filter(session__user=user).count()
             
             # Delete all task data for the user
             # Due to CASCADE relationships, deleting plans will also delete exercises and meals
             WorkoutPlan.objects.filter(user=user).delete()
             DietPlan.objects.filter(user=user).delete()
             DailyProgress.objects.filter(user=user).delete()
+            # Delete all chat data for the user
+            # Due to CASCADE relationships, deleting sessions will also delete messages
+            ChatSession.objects.filter(user=user).delete()
             
             return Response({
                 "status": status.HTTP_200_OK,
                 "success": True,
-                "message": "All task data has been reset successfully",
+                "message": "All task and chat data has been reset successfully",
                 "data": {
                     "deleted_items": {
                         "workout_plans": workout_plans_count,
                         "diet_plans": diet_plans_count,
-                        "daily_progress": daily_progress_count
+                        "daily_progress": daily_progress_count,
+                        "chat_sessions": chat_sessions_count,
+                        "chat_messages": chat_messages_count
                     },
                     "reset_at": timezone.now()
                 }
