@@ -6,7 +6,7 @@ from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
 class ExerciseInline(admin.TabularInline):
     model = Exercise
     extra = 0
-    fields = ('name', 'sets', 'reps', 'description', 'completed_sets', 'status', 'order')
+    fields = ('name', 'sets', 'reps', 'description', 'tips', 'completed_sets', 'status', 'order')
 
 
 class MealInline(admin.TabularInline):
