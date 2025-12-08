@@ -52,6 +52,7 @@ def save_workout_plan_as_task(user, session, workout_data, summary):
             sets=exercise_data.get('sets', 3),
             reps=str(exercise_data.get('reps', '10-12')),
             description=exercise_data.get('description', ''),
+            tips=exercise_data.get('tips', []),
             order=index,
             status='pending'
         )
@@ -135,19 +136,24 @@ Previous Conversation:
 If you are providing a workout plan, include it in "workout" as a JSON array of objects like:
 [
     {"exercise": "Shoulder Press", "sets": 3, "reps": "10–12",
-    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid."},
+    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.",
+    "tips": ["Keep your core tight", "Don't arch your back", "Control the movement"]},
     {"exercise": "Bicep Curls", "sets": 3, "reps": "10–12",
-    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid."},
+    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.",
+    "tips": ["Keep elbows stationary", "Full range of motion", "Squeeze at the top"]},
     ...  
 ]
 
 If you are providing a diet plan, include it in "diet" as a JSON array of objects like:
 [
-  {{"meal": "Breakfast", "title": "..." , "items": ["...", .....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
-  {{"meal": "Lunch", "title": "..." , "items": ["...", ....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
-  {{"meal": "Snack", "title": "..." , "items": ["...", ....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
-  {{"meal": "Dinner", "title": "..." , "items": ["...", ....], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}},
-
+    [
+    {"exercise": "Shoulder Press", "sets": 3, "reps": "10–12",
+    "description": "Detailed explanation including: how to perform it step-by-step, correct form",
+    "tips": ["...", "...", ...]},
+    {"exercise": "Bicep Curls", "sets": 3, "reps": "10–12",
+    "description": "Detailed explanation including: how to perform it step-by-step, correct form",
+    "tips": ["...", "...", ...]},
+    ...  
 i need only the 4 meal. Breakfast, Lunch, Snack and dinner. In each meal item give alteast 3-4 food or more. 
 ...
 ]
@@ -232,7 +238,8 @@ class ChatView(APIView):
                     "exercise": exercise.name,
                     "sets": exercise.sets,
                     "reps": exercise.reps,
-                    "description": exercise.description or ""
+                    "description": exercise.description or "",
+                    "tips": exercise.tips or []
                 })
         
         # Build diet context
@@ -566,7 +573,8 @@ class ModifyPlanView(APIView):
                     "exercise": exercise.name,
                     "sets": exercise.sets,
                     "reps": exercise.reps,
-                    "description": exercise.description or ""
+                    "description": exercise.description or "",
+                    "tips": exercise.tips or []
                 })
         
         # Build diet context from the specified plan
@@ -639,7 +647,7 @@ IMPORTANT INSTRUCTIONS:
 8. Maintain the same format as the original plan
 9. In "message", explain what changes you made and why
 
-Workout format: [{{"exercise": "name", "sets": 3, "reps": "10-12", "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid."}}]
+Workout format: [{{"exercise": "name", "sets": 3, "reps": "10-12", "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.", "tips": ["tip1", "tip2", "tip3"]}}]
 Diet format: [{{"meal": "Breakfast/Lunch/Snack/Dinner", "title": "...", "items": [...], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}}]
 
 Never include extra text outside JSON.
