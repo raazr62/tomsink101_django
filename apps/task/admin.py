@@ -1,6 +1,6 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
-from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
 
 
 class ExerciseInline(admin.TabularInline):
@@ -79,3 +79,29 @@ class DailyProgressAdmin(ModelAdmin):
     list_filter = ('date', 'user')
     search_fields = ('user__email', 'notes')
     readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(WorkoutReview)
+class WorkoutReviewAdmin(ModelAdmin):
+    list_display = ('workout_plan', 'user', 'difficulty', 'satisfaction', 'created_at')
+    list_filter = ('difficulty', 'satisfaction', 'target_hit', 'created_at')
+    search_fields = ('workout_plan__name', 'user__email', 'feedback')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Workout Plan & User', {
+            'fields': ('id', 'workout_plan', 'user')
+        }),
+        ('Completed Reps', {
+            'fields': ('reps_completed',)
+        }),
+        ('Review Ratings', {
+            'fields': ('difficulty', 'target_hit', 'energy_level', 'body_feeling', 'satisfaction')
+        }),
+        ('Feedback', {
+            'fields': ('feedback',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )

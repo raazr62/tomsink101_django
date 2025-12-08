@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 import uuid
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class WorkoutPlan(models.Model):
@@ -244,3 +245,80 @@ class DailyProgress(models.Model):
     
     def __str__(self):
         return f"{self.user.email} - {self.date}"
+
+
+class WorkoutReview(models.Model):
+    """Model to store user reviews and feedback for completed workout plans."""
+    DIFFICULTY_CHOICES = [
+        ('very_easy', 'Very Easy'),
+        ('easy', 'Easy'),
+        ('moderate', 'Moderate'),
+        ('tough', 'Tough'),
+        ('very_tough', 'Very Tough'),
+    ]
+    
+    TARGET_HIT_CHOICES = [
+        ('not_at_all', 'Not at All'),
+        ('slightly', 'Slightly'),
+        ('moderately', 'Moderately'),
+        ('well', 'Well'),
+        ('very_well', 'Very Well'),
+    ]
+    
+    ENERGY_LEVEL_CHOICES = [
+        ('very_low', 'Very Low'),
+        ('low', 'Low'),
+        ('moderate', 'Moderate'),
+        ('high', 'High'),
+        ('very_high', 'Very High'),
+    ]
+    
+    BODY_FEELING_CHOICES = [
+        ('very_poor', 'Very Poor'),
+        ('poor', 'Poor'),
+        ('okay', 'Okay'),
+        ('good', 'Good'),
+        ('excellent', 'Excellent'),
+    ]
+    
+    SATISFACTION_CHOICES = [
+        ('very_dissatisfied', 'Very Dissatisfied'),
+        ('dissatisfied', 'Dissatisfied'),
+        ('neutral', 'Neutral'),
+        ('satisfied', 'Satisfied'),
+        ('very_satisfied', 'Very Satisfied'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workout_plan = models.ForeignKey(
+        WorkoutPlan,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='workout_reviews'
+    )
+    
+    # Review Questions
+    reps_completed = models.CharField(max_length=50, blank=True)  # "How many reps did you complete on average?"
+    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES)  # Q1: How tough was today's workout?
+    target_hit = models.CharField(max_length=20, choices=TARGET_HIT_CHOICES)  # Q2: How well did you hit the targets?
+    energy_level = models.CharField(max_length=20, choices=ENERGY_LEVEL_CHOICES)  # Q3: Energy level during workout
+    body_feeling = models.CharField(max_length=20, choices=BODY_FEELING_CHOICES)  # Q4: How's your body feeling?
+    satisfaction = models.CharField(max_length=20, choices=SATISFACTION_CHOICES)  # Q5: Satisfaction level
+    
+    feedback = models.TextField(blank=True)  # Additional feedback or comments
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Workout Review'
+        verbose_name_plural = 'Workout Reviews'
+        unique_together = ['workout_plan', 'user']  # One review per workout plan per user
+    
+    def __str__(self):
+        return f"Review for {self.workout_plan.name} by {self.user.email}"
