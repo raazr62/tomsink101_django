@@ -75,6 +75,7 @@ class Exercise(models.Model):
     sets = models.IntegerField(default=3)
     reps = models.CharField(max_length=50)  # Can be "10-12" or "30 seconds"
     description = models.TextField(blank=True, null=True)  # Detailed explanation of the exercise
+    tips = models.JSONField(blank=True, null=True, default=list)  # Array of tips for the exercise
     completed_sets = models.IntegerField(default=0)
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

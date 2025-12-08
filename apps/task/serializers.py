@@ -9,7 +9,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Exercise
-        fields = ['id', 'name', 'sets', 'reps', 'description', 'completed_sets', 'notes', 'status', 'order', 
+        fields = ['id', 'name', 'sets', 'reps', 'description', 'tips', 'completed_sets', 'notes', 'status', 'order', 
                   'completion_percentage', 'is_completed', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
