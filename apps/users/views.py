@@ -1,4 +1,4 @@
-from .models import User, Profile
+from .models import User, Profile, UserReferral
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -36,8 +36,16 @@ class SignUpView(APIView):
     permission_classes = []
 
     def post(self, request):
+        # Prepare data
+        data = request.data.copy()
+        
+        # Check for referral code in query params (e.g., ?ref=john-abc123)
+        # Query params take priority over body params
+        ref_from_query = request.query_params.get('ref')
+        if ref_from_query:
+            data['referred_by'] = ref_from_query
 
-        serializer = SignUpSerializer(data=request.data, context={'request': request})
+        serializer = SignUpSerializer(data=data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return success(data=serializer.data,message="User created successfully. Please check your email to verify your account.",code=status.HTTP_201_CREATED, status=status.HTTP_201_CREATED)
@@ -183,7 +191,7 @@ class ProfileGet(APIView):
             'email': profile.user.email,
             'name': profile.name,
             'accepted_terms': profile.accepted_terms,
-            'avatar_url': settings.BACKEND_URL + profile.avatar.url if profile.avatar else None,
+            'avatar_url': profile.avatar.url if profile.avatar else None,
             'created_at': profile.created_at,
             'updated_at': profile.updated_at,
         }

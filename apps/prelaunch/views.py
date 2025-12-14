@@ -2,9 +2,11 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAdminUser
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.db import transaction
 from .models import PrelaunchUser, PrelaunchReferral
+from apps.users.models import User
+from .helpers import get_client_ip
 from .serializers import (
     PrelaunchUserSerializer,
     PrelaunchUserDetailSerializer,
@@ -14,35 +16,7 @@ from .serializers import (
 )
 
 
-def get_client_ip(request):
-    """Extract client IP address from request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
-
-
 class PrelaunchSignupView(APIView):
-    """
-    POST endpoint for users to join the waitlist.
-    
-    Required fields:
-    - name: User's full name
-    - email: User's email address
-    
-    Optional fields:
-    - referred_by: Referral code of the person who invited them (can be in body or query param 'ref')
-    
-    Query params:
-    - ref: Referral code (alternative to 'referred_by' in body)
-    
-    Response includes:
-    - User details
-    - Unique referral code
-    - Referral link to share
-    """
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -53,7 +27,6 @@ class PrelaunchSignupView(APIView):
         # Prepare data
         data = request.data.copy()
         
-        # Check for referral code in query params (e.g., ?ref=john-abc123)
         # Priority: body parameter > query parameter
         if not data.get('referred_by'):
             ref_from_query = request.query_params.get('ref')
@@ -147,8 +120,8 @@ class PrelaunchLeaderboardView(APIView):
         limit = min(limit, 100)  # Max 100 results
         
         # Get users with referral counts
-        users = PrelaunchUser.objects.annotate(
-            ref_count=Count('referrals_made')
+        users = User.objects.annotate(
+            ref_count=Count('referrals_by')
         ).filter(
             ref_count__gt=0
         ).order_by('-ref_count', '-created_at')[:limit]

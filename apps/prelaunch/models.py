@@ -1,57 +1,16 @@
 from django.db import models
-from django.utils.text import slugify
-import secrets
-import string
-
-
-def generate_referral_code(name):
-    """
-    Generate a unique referral code based on the user's name.
-    Format: name-slug + 6 random characters (e.g., john-1a92bc)
-    """
-    # Create slug from name (max 10 chars to keep code short)
-    name_slug = slugify(name)[:10]
-    
-    # Generate 6 random alphanumeric characters
-    random_chars = ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
-    
-    return f"{name_slug}-{random_chars}"
+from .helpers import generate_referral_code
 
 
 class PrelaunchUser(models.Model):
-    """
-    Stores every user who signs up for the pre-launch waitlist.
-    Each user gets a unique referral code to share with others.
-    """
+
     name = models.CharField(max_length=255, help_text="User's full name")
     email = models.EmailField(unique=True, db_index=True, help_text="User's email address (must be unique)")
-    referral_code = models.CharField(
-        max_length=50, 
-        unique=True, 
-        db_index=True,
-        help_text="User's unique referral code to share with others"
-    )
-    referred_by = models.CharField(
-        max_length=50, 
-        blank=True, 
-        null=True,
-        db_index=True,
-        help_text="Referral code of the person who invited this user"
-    )
-    ip_address = models.GenericIPAddressField(
-        blank=True, 
-        null=True,
-        help_text="IP address for fraud detection"
-    )
-    user_agent = models.TextField(
-        blank=True, 
-        null=True,
-        help_text="Browser user agent for fraud detection"
-    )
-    activated = models.BooleanField(
-        default=False,
-        help_text="Whether this user has activated their main account"
-    )
+    referral_code = models.CharField(max_length=50, unique=True, db_index=True,help_text="User's unique referral code to share with others")
+    referred_by = models.CharField(max_length=50, blank=True, null=True, db_index=True, help_text="Referral code of the person who invited this user")
+    ip_address = models.GenericIPAddressField(blank=True, null=True,help_text="IP address for fraud detection")
+    user_agent = models.TextField(blank=True, null=True, help_text="Browser user agent for fraud detection")
+    activated = models.BooleanField(default=False, help_text="Whether this user has activated their main account")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -91,7 +50,7 @@ class PrelaunchUser(models.Model):
         """
         from django.conf import settings
         base_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-        return f"{base_url}/signup/?ref={self.referral_code}"
+        return f"{base_url}/api/signup/?ref={self.referral_code}"
 
     @property
     def referral_count(self):
@@ -104,10 +63,7 @@ class PrelaunchUser(models.Model):
 
 
 class PrelaunchReferral(models.Model):
-    """
-    Logs every successful referral event.
-    This creates a clean separation for tracking and analytics.
-    """
+    
     parent_referral_code = models.CharField(
         max_length=50,
         db_index=True,
@@ -121,7 +77,9 @@ class PrelaunchReferral(models.Model):
         PrelaunchUser,
         on_delete=models.CASCADE,
         related_name='referral_records',
-        help_text="The user who was referred"
+        null=True,
+        blank=True,
+        help_text="The user who was referred (null for main app users)"
     )
     parent_user = models.ForeignKey(
         PrelaunchUser,

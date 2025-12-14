@@ -70,21 +70,33 @@ def get_unfold_settings():
                     ],
                 },
                 {
-                    "title": _("User Management"),
+                    "title": _("User"),
                     "separator": True,  # Top border
-                    "collapsible": False,  # Collapsible group of links
+                    "collapsible": True,  # Collapsible group of links
                     "items": [
                         {
                             "title": _("Users"),
                             "icon": "people",
-                            "link": reverse_lazy("admin:users_user_changelist"),
+                            "link": reverse_lazy("admin:users_profile_changelist"),
                         },
                     ],
                 },
                 {
-                    "title": _("Subscription Management"),
+                    "title": _("Pre-Launch"),
                     "separator": True,  # Top border
-                    "collapsible": False,  # Collapsible group of links
+                    "collapsible": True,  # Collapsible group of links
+                    "items": [
+                        {
+                            "title": _("Pre-Launch Users"),
+                            "icon": "people",
+                            "link": reverse_lazy("admin:prelaunch_prelaunchuser_changelist"),
+                        },
+                    ],
+                },
+                {
+                    "title": _("Subscription"),
+                    "separator": True,  # Top border
+                    "collapsible": True,  # Collapsible group of links
                     "items": [
                         {
                             "title": _("Packages"),
@@ -149,7 +161,7 @@ def get_unfold_settings():
                     ],
                 },
                 {
-                    "title": _("Content Management System"),
+                    "title": _("Content"),
                     "separator": True,
                     "collapsible": True,
                     "items": [
@@ -223,7 +235,7 @@ def get_unfold_settings():
                     ],
                 },
                 {
-                    "title": _("AI Chat Management"),
+                    "title": _("AI Chat"),
                     "separator": True,
                     "collapsible": True,
                     "items": [
@@ -240,7 +252,7 @@ def get_unfold_settings():
                     ],
                 },
                 {
-                    "title": _("User Task Management"),
+                    "title": _("User Task"),
                     "separator": True,
                     "collapsible": True,
                     "items": [
