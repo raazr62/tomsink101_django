@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.db.models import Count
 from django.utils.html import format_html
 from .models import PrelaunchUser, PrelaunchReferral
+from unfold.admin import ModelAdmin
 
 
 @admin.register(PrelaunchUser)
-class PrelaunchUserAdmin(admin.ModelAdmin):
+class PrelaunchUserAdmin(ModelAdmin):
     list_display = [
         'name', 
         'email', 
@@ -151,7 +152,7 @@ class PrelaunchUserAdmin(admin.ModelAdmin):
 
 
 @admin.register(PrelaunchReferral)
-class PrelaunchReferralAdmin(admin.ModelAdmin):
+class PrelaunchReferralAdmin(ModelAdmin):
     list_display = [
         'parent_display',
         'child_display',

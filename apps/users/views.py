@@ -1,16 +1,15 @@
-from .models import User, Profile
+from .models import Profile
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.urls import reverse_lazy
-from django.db.models import Count
-import json
-from django.db.models.functions import TruncDate
 from rest_framework.validators import ValidationError
 from django.utils import timezone
+from apps.utils.helpers import success
+from django.conf import settings
+from django.shortcuts import render
 from .serializers import (
     SignUpSerializer,
     SignInSerializer,
@@ -25,24 +24,30 @@ from .serializers import (
     DeleteAccountSerializer,
     VerifyEmailOTPSerializer,
     ResendVerificationOTPSerializer,
+    GoogleSerializer
 )
-from django.http import Http404
-from apps.utils.helpers import success, error
-from django.conf import settings
 
-
-# Create your views here.
+# Signup
 class SignUpView(APIView):
     permission_classes = []
 
     def post(self, request):
+        # Prepare data
+        data = request.data.copy()
+        
+        # Check for referral code in query params (e.g., ?ref=john-abc123)
+        # Query params take priority over body params
+        ref_from_query = request.query_params.get('ref')
+        if ref_from_query:
+            data['referred_by'] = ref_from_query
 
-        serializer = SignUpSerializer(data=request.data, context={'request': request})
+        serializer = SignUpSerializer(data=data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return success(data=serializer.data,message="User created successfully. Please check your email to verify your account.",code=status.HTTP_201_CREATED, status=status.HTTP_201_CREATED)
         raise ValidationError(serializer.errors)
 
+# Singin
 class SignInView(APIView):
 
     permission_classes = []
@@ -54,7 +59,7 @@ class SignInView(APIView):
             return success(data=serializer.data, message="Signin successful.", code=status.HTTP_200_OK)
         raise ValidationError(serializer.errors)
 
-
+# Signout
 class SignOutView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -66,7 +71,7 @@ class SignOutView(APIView):
             return Response({'status':status.HTTP_200_OK, 'success':True, 'message': 'Logout successful.', 'data': serializer.data}, status.HTTP_200_OK)
         return Response({'status':status.HTTP_400_BAD_REQUEST, 'success':False, 'message': 'Logout failed.', 'data': serializer.errors}, status.HTTP_400_BAD_REQUEST)
 
-
+# Change Password
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -78,6 +83,7 @@ class ChangePasswordView(APIView):
             return Response({'status':status.HTTP_200_OK, 'success':True, 'message': 'Password changed successfully.', 'data': []}, status.HTTP_200_OK)
         raise ValidationError(serializer.errors)
 
+# Send OTP
 class SendOTPView(APIView):
     permission_classes = []
 
@@ -90,6 +96,7 @@ class SendOTPView(APIView):
             errors["error"] = errors.pop("email")
         raise ValidationError(errors)
 
+# Resend OTP
 class ResendOTPView(APIView):
     permission_classes = []
 
@@ -102,6 +109,7 @@ class ResendOTPView(APIView):
             errors["error"] = errors.pop("email")
         raise ValidationError(errors)
 
+# Verify OTP
 class VerifyOTPView(APIView):
     permission_classes = []
 
@@ -112,7 +120,7 @@ class VerifyOTPView(APIView):
             return Response({'status':status.HTTP_200_OK, 'success':True, 'message': 'OTP verify is successfully.', 'data': []}, status.HTTP_200_OK)
         return Response({'status':status.HTTP_400_BAD_REQUEST, 'success':False, 'message': 'OTP verify is failed.', 'data': serializer.errors}, status.HTTP_400_BAD_REQUEST)
 
-
+# Reset Password
 class ResetPasswordView(APIView):
     permission_classes = []
 
@@ -126,8 +134,7 @@ class ResetPasswordView(APIView):
             errors["error"] = errors.pop("non_field_errors")
         return Response({'status':status.HTTP_400_BAD_REQUEST, 'success':False, 'message': 'Password reset failed.', 'data': errors}, status.HTTP_400_BAD_REQUEST)
 
-
-
+# Update Profile Avatar
 class UpdateProfileAvatarView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -146,7 +153,7 @@ class UpdateProfileAvatarView(APIView):
             return Response({'status':status.HTTP_200_OK, 'success':True, 'message': 'Profile avatar update successfully.', 'data': serializer.data}, status.HTTP_200_OK)
         return Response({'status':status.HTTP_400_BAD_REQUEST, 'success':False, 'message': 'Profile avatar update failed.', 'data': serializer.errors}, status.HTTP_400_BAD_REQUEST)
 
-
+# Update Profile
 class UpdateProfileView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -165,7 +172,7 @@ class UpdateProfileView(APIView):
             return Response({'status': status.HTTP_200_OK, 'success': True, 'message': 'Profile update successfully.', 'data': serializer.data})
         return Response({'status': status.HTTP_400_BAD_REQUEST, 'success': False, 'message': 'Profile update failed.', 'data': serializer.errors})
 
-
+# Get Profile
 class ProfileGet(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -183,13 +190,13 @@ class ProfileGet(APIView):
             'email': profile.user.email,
             'name': profile.name,
             'accepted_terms': profile.accepted_terms,
-            'avatar_url': settings.BACKEND_URL + profile.avatar.url if profile.avatar else None,
+            'avatar_url': profile.avatar.url if profile.avatar else None,
             'created_at': profile.created_at,
             'updated_at': profile.updated_at,
         }
         return Response({'status': status.HTTP_200_OK, 'success': True, 'message': 'Profile get successfully.', 'data': data})
 
-
+# Delete Account
 class DeleteAccountView(APIView):
     """
     Delete Account View - Permanently deletes the authenticated user's account.
@@ -221,7 +228,7 @@ class DeleteAccountView(APIView):
             'data': serializer.errors
         })
 
-
+# Verify Email OTP
 class VerifyEmailOTPView(APIView):
     """
     API View for verifying email address using OTP
@@ -250,7 +257,7 @@ class VerifyEmailOTPView(APIView):
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
+# Resend Verification OTP
 class ResendVerificationOTPView(APIView):
     """
     API View for resending verification OTP
@@ -277,18 +284,8 @@ class ResendVerificationOTPView(APIView):
             'message': 'Failed to resend verification OTP.',
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
-        
-        
-from django.shortcuts import render
-from rest_framework.views import APIView
-from apps.users.serializers import GoogleSerializer
-from rest_framework.response import Response
-from django.shortcuts import render
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework import status
-from django.conf import settings
-from .serializers import GoogleSerializer
 
+# Google Login
 class GoogleLoginView(APIView):
     def post(self, request):
         serializer = GoogleSerializer(data=request.data)
@@ -307,7 +304,7 @@ class GoogleLoginView(APIView):
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
+# Google Login Page
 class GoogleLoginPageView(APIView):
     """Serve the Google login page"""
     permission_classes = []
@@ -319,7 +316,7 @@ class GoogleLoginPageView(APIView):
         }
         return render(request, 'users/login.html', context)
 
-
+# Google Test Endpoint
 class GoogleTestView(APIView):
     """Simple test endpoint for Google authentication"""
     permission_classes = []
@@ -349,7 +346,7 @@ class GoogleTestView(APIView):
             'received_data': request.data
         })
 
-
+# Google OAuth Callback
 class GoogleCallbackView(APIView):
     """Handle Google OAuth callback"""
     permission_classes = []
@@ -397,11 +394,8 @@ class GoogleCallbackView(APIView):
                 'error': 'Authentication failed',
                 'details': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        
-from django.shortcuts import render
 
-
+# Dashboard View
 def dashboard(request):
     context = {
         'GOOGLE_CLIENT_ID': settings.GOOGLE_CLIENT_ID,

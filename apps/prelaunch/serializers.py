@@ -4,9 +4,6 @@ from django.db.models import Count
 
 
 class PrelaunchUserSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating and displaying prelaunch users.
-    """
     referral_link = serializers.ReadOnlyField()
     referral_count = serializers.ReadOnlyField()
     
@@ -26,22 +23,18 @@ class PrelaunchUserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'referral_code', 'referral_link', 'referral_count', 'created_at']
 
     def validate_email(self, value):
-        """Check if email already exists."""
         if PrelaunchUser.objects.filter(email=value).exists():
             raise serializers.ValidationError("This email is already registered.")
         return value
 
     def validate_referred_by(self, value):
-        """Validate that the referral code exists if provided."""
         if value and not PrelaunchUser.objects.filter(referral_code=value).exists():
             raise serializers.ValidationError("Invalid referral code.")
         return value
 
 
 class PrelaunchUserDetailSerializer(serializers.ModelSerializer):
-    """
-    Detailed serializer with referral statistics.
-    """
+
     referral_link = serializers.ReadOnlyField()
     referral_count = serializers.ReadOnlyField()
     referred_users = serializers.SerializerMethodField()

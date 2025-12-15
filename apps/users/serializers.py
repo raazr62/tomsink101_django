@@ -1,7 +1,4 @@
-import email
-
-from apps.users.managers import UserManager
-from .models import User, Profile, OTP
+from .models import User, Profile, UserReferral, OTP
 from rest_framework import  serializers
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
@@ -11,45 +8,107 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from .utils import generate_otp, send_normal_mail, send_verification_otp_email
 from django.utils import timezone
-from apps.utils.helpers import error
+from apps.prelaunch.models import PrelaunchUser
+from apps.users.utils import Google, register_with_google
+from rest_framework.exceptions import AuthenticationFailed
+from .helpers import get_cloudinary_url
 
-
+# SignUp
 class SignUpSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+    referred_by = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    avatar = serializers.ImageField(required=False)
 
     def validate(self, attrs):
         email = attrs.get('email')
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError({'email': 'User with this email already exists.'})
+        
+        # Validate referral code if provided
+        referred_by = attrs.get('referred_by')
+        if referred_by:
+            # Check both Profile and PrelaunchUser models
+            if not (Profile.objects.filter(referral_code=referred_by).exists() or 
+                    PrelaunchUser.objects.filter(referral_code=referred_by).exists()):
+                raise serializers.ValidationError({'referred_by': 'Invalid referral code.'})
+        
         return attrs
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'name']
+        fields = ['email', 'password', 'name', 'referred_by', 'avatar']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if hasattr(instance, 'profile'):
+            profile = instance.profile
+            data.update({
+                'name': profile.name,
+                'referral_code': profile.referral_code,
+                'referred_by': profile.referred_by,
+                'referral_link': profile.referral_link,
+                'referral_count': profile.referral_count,
+            })
+        return data
 
     def create(self, validated_data):
         name = validated_data.pop('name', '')
         email = validated_data.pop('email')
         password = validated_data.pop('password')
+        referred_by = validated_data.pop('referred_by', None)
+        avatar = validated_data.pop('avatar', None)
 
         # Create user
         user = User.objects.create_user(email=email, password=password, **validated_data)
 
-        # Create profile
-        Profile.objects.create(
+        # Create profile with referral info
+        profile = Profile.objects.create(
             user=user,
-            name=name
+            name=name,
+            referred_by=referred_by,
+            avatar=avatar
         )
+
+        # If user was referred, create referral record
+        if referred_by:
+            from apps.prelaunch.models import PrelaunchUser, PrelaunchReferral
+            
+            # Check if referral code belongs to a main user (Profile)
+            if Profile.objects.filter(referral_code=referred_by).exists():
+                parent_profile = Profile.objects.get(referral_code=referred_by)
+                UserReferral.objects.create(
+                    parent_referral_code=referred_by,
+                    child_email=email,
+                    child_profile=profile,
+                    parent_profile=parent_profile
+                )
+            # Check if referral code belongs to a prelaunch user
+            elif PrelaunchUser.objects.filter(referral_code=referred_by).exists():
+                parent_prelaunch_user = PrelaunchUser.objects.get(referral_code=referred_by)
+                # Create UserReferral for main user tracking
+                UserReferral.objects.create(
+                    parent_referral_code=referred_by,
+                    child_email=email,
+                    child_profile=profile,
+                    parent_profile=None  # No main user profile for prelaunch referrals
+                )
+                # Create PrelaunchReferral for prelaunch user tracking
+                PrelaunchReferral.objects.create(
+                    parent_referral_code=referred_by,
+                    child_email=email,
+                    child_user=None,  # No prelaunch user record for this email
+                    parent_user=parent_prelaunch_user
+                )
 
         # Generate OTP for email verification
         otp = generate_otp(6)
+        print(f"OTP: {otp}")
         user.email_verification_otp = make_password(otp)
         user.otp_expires_at = timezone.now() + timedelta(minutes=10)
         user.otp_attempts = 0
         user.save()
-        
 
         # Send verification OTP email
         try:
@@ -77,7 +136,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             "refresh_token": str(refresh),
         }
 
-
+# SignIn
 class SignInSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
@@ -104,12 +163,14 @@ class SignInSerializer(serializers.Serializer):
             'id': user.id,
             'name': user.profile.name if hasattr(user, 'profile') else '',
             'email': user.email,
+            'avatar': user.profile.avatar.url if hasattr(user, 'profile') and user.profile.avatar else None,
             'provider': user.auth_provider,
             'is_google': user.auth_provider == 'google',
             'refresh_token': str(refresh),
             'access_token': str(refresh.access_token)
         }
 
+# SignOut
 class SignOutSerializer(serializers.Serializer):
     refresh_token = serializers.CharField(write_only=True)
 
@@ -124,6 +185,7 @@ class SignOutSerializer(serializers.Serializer):
         except Exception as e:
             return ValidationError({'error': str(e)})
 
+# Change Password
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
@@ -154,6 +216,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.save()
         return user
 
+# OTP Management
 class SendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     purpose = serializers.CharField()
@@ -165,6 +228,7 @@ class SendOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError({'error': 'User not found.'})
 
         otp_code = generate_otp()
+        print(f"OTP:  {otp_code}")
         otp_hashed = make_password(otp_code)
         purpose = attrs['purpose']
 
@@ -181,6 +245,7 @@ class SendOTPSerializer(serializers.Serializer):
         send_normal_mail(data)
         return attrs
 
+# Resend OTP
 class ResendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     purpose = serializers.CharField()
@@ -220,6 +285,7 @@ class ResendOTPSerializer(serializers.Serializer):
         send_normal_mail(data)
         return attrs
 
+# Verify OTP
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)
@@ -265,6 +331,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         self.otp_obj.attempts = 0
         self.otp_obj.save()
 
+# Reset Password
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     purpose = serializers.CharField()
@@ -304,11 +371,13 @@ class ResetPasswordSerializer(serializers.Serializer):
         user.save()
         OTP.objects.filter(user=user, purpose=self.validated_data['purpose']).delete()
 
+# Profile Management
 class PreparationTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ['preparation_type']
 
+# Update Profile Avatar
 class UpdateProfileAvatarSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
@@ -317,10 +386,7 @@ class UpdateProfileAvatarSerializer(serializers.ModelSerializer):
             'avatar': { 'write_only': True },
         }
 
-
-
-
-#  user
+# User
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -334,10 +400,12 @@ class UserSerializer(serializers.ModelSerializer):
             "profile",
         ]
 
-
 # UserProfile
 class UserProfileSerializer(serializers.ModelSerializer):
-    avatar = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(required=False)
+    referral_link = serializers.ReadOnlyField()
+    referral_count = serializers.ReadOnlyField()
+    referred_users = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -347,43 +415,54 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "accepted_terms",
             "avatar",
             "dob",
+            "referral_code",
+            "referred_by",
+            "referral_link",
+            "referral_count",
+            "referred_users",
             "created_at",
             "updated_at",
         ]
     
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['avatar'] = instance.avatar.url if instance.avatar else None
+        return data
+    
     def get_avatar(self, obj):
-        """Return full avatar URL with backend domain"""
+        """Return full avatar URL"""
         if obj.avatar:
-            backend_url = settings.BACKEND_URL
-            if backend_url:
-                return f"{backend_url}{obj.avatar.url}"
-            return obj.avatar.url
+            return obj.avatar.url  # Cloudinary provides full URL
         return None
 
+    def get_referred_users(self, obj):
+        """Get list of users referred by this user."""
+        referrals = obj.get_referrals()[:10]  # Limit to 10 most recent
+        return [{
+            'name': user.name,
+            'email': user.user.email,
+            'created_at': user.created_at
+        } for user in referrals]
 
+# Delete Account
 class DeleteAccountSerializer(serializers.Serializer):
-    """
-    Serializer for account deletion
-    Requires confirmation before deletion
-    """
+
     confirm_deletion = serializers.BooleanField(required=True)
     
     def validate_confirm_deletion(self, value):
-        """Ensure user confirmed deletion"""
         if not value:
             raise serializers.ValidationError("You must confirm account deletion.")
         return value
     
     def save(self):
-        """Delete the user account"""
         user = self.context['request'].user
         email = user.email
         user.delete()
         return email
 
-
+# Verify Email OTP
 class VerifyEmailOTPSerializer(serializers.Serializer):
-    """Serializer for email verification using OTP"""
+
     email = serializers.EmailField(required=True)
     otp_code = serializers.CharField(required=True, max_length=6, min_length=6)
     
@@ -439,7 +518,7 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
         
         return self.user
 
-
+# Resend Verification OTP
 class ResendVerificationOTPSerializer(serializers.Serializer):
     """Serializer for resending verification OTP"""
     email = serializers.EmailField(required=True)
@@ -477,18 +556,8 @@ class ResendVerificationOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Failed to send verification email: {str(e)}')
         
         return self.user
-    
-    
 
-from rest_framework import serializers
-from apps.users.utils import Google, register_with_google
-from django.conf import settings
-from rest_framework.exceptions import AuthenticationFailed
-
-from rest_framework.exceptions import AuthenticationFailed
-from django.conf import settings
-from apps.users.utils import Google, register_with_google
-
+# Google Authentication
 class GoogleSerializer(serializers.Serializer):
     access_token = serializers.CharField()
 
