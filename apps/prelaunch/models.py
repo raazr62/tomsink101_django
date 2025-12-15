@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from .helpers import generate_referral_code
 
 # Prelaunch User
@@ -40,7 +41,6 @@ class PrelaunchUser(models.Model):
 
     @property
     def referral_link(self):
-        from django.conf import settings
         base_url = getattr(settings, 'SITE_URL', 'https://astonishing-cupcake-ab36d3.netlify.app')
         return f"{base_url}/sign-up/?ref={self.referral_code}"
 

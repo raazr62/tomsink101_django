@@ -18,6 +18,14 @@ def send_normal_mail(data):
 
 def send_verification_otp_email(user, otp):
     """Send OTP email for email verification"""
+    # Get referral link if profile exists
+    referral_link = ""
+    try:
+        if hasattr(user, 'profile'):
+            referral_link = user.profile.referral_link
+    except:
+        pass
+    
     subject = "Verify Your Email Address - OTP"
     body = f"""
 Hello {user.email},
@@ -27,6 +35,8 @@ Thank you for signing up! Please use the following OTP to verify your email addr
 Your OTP: {otp}
 
 This OTP will expire in 10 minutes.
+
+{ "Your referral link: " + referral_link if referral_link else "" }
 
 If you didn't create this account, please ignore this email.
 

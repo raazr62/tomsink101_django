@@ -8,10 +8,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from .utils import generate_otp, send_normal_mail, send_verification_otp_email
 from django.utils import timezone
-from apps.prelaunch.models import PrelaunchUser
+from apps.prelaunch.models import PrelaunchUser, PrelaunchReferral
 from apps.users.utils import Google, register_with_google
 from rest_framework.exceptions import AuthenticationFailed
-from .helpers import get_cloudinary_url
+
 
 # SignUp
 class SignUpSerializer(serializers.ModelSerializer):
@@ -73,7 +73,6 @@ class SignUpSerializer(serializers.ModelSerializer):
 
         # If user was referred, create referral record
         if referred_by:
-            from apps.prelaunch.models import PrelaunchUser, PrelaunchReferral
             
             # Check if referral code belongs to a main user (Profile)
             if Profile.objects.filter(referral_code=referred_by).exists():
