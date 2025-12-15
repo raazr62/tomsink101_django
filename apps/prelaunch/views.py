@@ -6,7 +6,7 @@ from django.db.models import Count
 from django.db import transaction
 from .models import PrelaunchUser, PrelaunchReferral
 from apps.users.models import User
-from .helpers import get_client_ip
+from .helpers import get_client_ip, send_referral_url_email
 from .serializers import (
     PrelaunchUserSerializer,
     PrelaunchUserDetailSerializer,
@@ -58,6 +58,13 @@ class PrelaunchSignupView(APIView):
                         except PrelaunchUser.DoesNotExist:
                             pass  # Already validated in serializer
                 
+                # Send referral URL email
+                try:
+                    send_referral_url_email(user)
+                except Exception as e:
+                    # Log the error but don't fail the signup
+                    print(f"Failed to send referral email: {str(e)}")
+                
                 # Return success response
                 return Response({
                     'status': status.HTTP_201_CREATED,
@@ -83,13 +90,6 @@ class PrelaunchSignupView(APIView):
 
 
 class PrelaunchUserDetailView(generics.RetrieveAPIView):
-    """
-    GET endpoint to retrieve user details by referral code or email.
-    
-    Query params:
-    - code: Referral code
-    - email: Email address
-    """
     permission_classes = [AllowAny]
     serializer_class = PrelaunchUserDetailSerializer
 
