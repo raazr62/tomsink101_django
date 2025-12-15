@@ -1,7 +1,7 @@
 from django.db import models
 from .helpers import generate_referral_code
 
-
+# Prelaunch User
 class PrelaunchUser(models.Model):
 
     name = models.CharField(max_length=255, help_text="User's full name")
@@ -29,10 +29,6 @@ class PrelaunchUser(models.Model):
         return f"{self.name} ({self.email})"
 
     def save(self, *args, **kwargs):
-        """
-        Auto-generate referral code if not provided.
-        Ensure uniqueness by regenerating if collision occurs.
-        """
         if not self.referral_code:
             # Generate a unique referral code
             while True:
@@ -44,51 +40,23 @@ class PrelaunchUser(models.Model):
 
     @property
     def referral_link(self):
-        """
-        Returns the full referral link for this user.
-        You can customize the domain in your settings.
-        """
         from django.conf import settings
-        base_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-        return f"{base_url}/api/signup/?ref={self.referral_code}"
+        base_url = getattr(settings, 'SITE_URL', 'https://astonishing-cupcake-ab36d3.netlify.app')
+        return f"{base_url}/sign-up/?ref={self.referral_code}"
 
     @property
     def referral_count(self):
-        """Returns the number of successful referrals for this user."""
         return self.referrals_made.count()
 
     def get_referrals(self):
-        """Returns queryset of all users referred by this user."""
         return PrelaunchUser.objects.filter(referred_by=self.referral_code)
 
-
+# Referral Model
 class PrelaunchReferral(models.Model):
-    
-    parent_referral_code = models.CharField(
-        max_length=50,
-        db_index=True,
-        help_text="Referral code of the inviter"
-    )
-    child_email = models.EmailField(
-        db_index=True,
-        help_text="Email of the user who was referred"
-    )
-    child_user = models.ForeignKey(
-        PrelaunchUser,
-        on_delete=models.CASCADE,
-        related_name='referral_records',
-        null=True,
-        blank=True,
-        help_text="The user who was referred (null for main app users)"
-    )
-    parent_user = models.ForeignKey(
-        PrelaunchUser,
-        on_delete=models.CASCADE,
-        related_name='referrals_made',
-        null=True,
-        blank=True,
-        help_text="The user who made the referral"
-    )
+    parent_referral_code = models.CharField(max_length=50, db_index=True, help_text="Referral code of the inviter")
+    child_email = models.EmailField(db_index=True, help_text="Email of the user who was referred")
+    child_user = models.ForeignKey(PrelaunchUser, on_delete=models.CASCADE, related_name='referral_records', null=True, blank=True,help_text="The user who was referred (null for main app users)")
+    parent_user = models.ForeignKey(PrelaunchUser, on_delete=models.CASCADE, related_name='referrals_made', null=True, blank=True, help_text="The user who made the referral")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -107,9 +75,6 @@ class PrelaunchReferral(models.Model):
         return f"{self.parent_referral_code} → {self.child_email}"
 
     def save(self, *args, **kwargs):
-        """
-        Auto-populate parent_user if not set.
-        """
         if not self.parent_user:
             try:
                 self.parent_user = PrelaunchUser.objects.get(referral_code=self.parent_referral_code)
