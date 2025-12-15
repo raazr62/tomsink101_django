@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from django.db.models import Count
 from django.db import transaction
 from .models import PrelaunchUser, PrelaunchReferral
-from apps.users.models import User
+from apps.users.models import User, Profile, UserReferral
 from .helpers import get_client_ip, send_referral_url_email
 from .serializers import (
     PrelaunchUserSerializer,
@@ -47,7 +47,7 @@ class PrelaunchSignupView(APIView):
                     
                     # If user was referred, create referral record
                     if user.referred_by:
-                        try:
+                        if PrelaunchUser.objects.filter(referral_code=user.referred_by).exists():
                             parent_user = PrelaunchUser.objects.get(referral_code=user.referred_by)
                             PrelaunchReferral.objects.create(
                                 parent_referral_code=user.referred_by,
@@ -55,8 +55,15 @@ class PrelaunchSignupView(APIView):
                                 child_user=user,
                                 parent_user=parent_user
                             )
-                        except PrelaunchUser.DoesNotExist:
-                            pass  # Already validated in serializer
+                        elif Profile.objects.filter(referral_code=user.referred_by).exists():
+                            parent_profile = Profile.objects.get(referral_code=user.referred_by)
+                            # For main user referring prelaunch user, create UserReferral
+                            UserReferral.objects.create(
+                                parent_referral_code=user.referred_by,
+                                child_email=user.email,
+                                child_profile=None,  # No profile for prelaunch user
+                                parent_profile=parent_profile
+                            )
                 
                 # Send referral URL email
                 try:

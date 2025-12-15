@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import PrelaunchUser, PrelaunchReferral
 from django.db.models import Count
+from apps.users.models import Profile
 
 
 class PrelaunchUserSerializer(serializers.ModelSerializer):
@@ -28,7 +29,8 @@ class PrelaunchUserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_referred_by(self, value):
-        if value and not PrelaunchUser.objects.filter(referral_code=value).exists():
+        if value and not (PrelaunchUser.objects.filter(referral_code=value).exists() or 
+                         Profile.objects.filter(referral_code=value).exists()):
             raise serializers.ValidationError("Invalid referral code.")
         return value
 
