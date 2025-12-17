@@ -29,9 +29,8 @@ class SignUpSerializer(serializers.ModelSerializer):
         # Validate referral code if provided
         referred_by = attrs.get('referred_by')
         if referred_by:
-            # Check both Profile and PrelaunchUser models
-            if not (Profile.objects.filter(referral_code=referred_by).exists() or 
-                    PrelaunchUser.objects.filter(referral_code=referred_by).exists()):
+            # Check either Profile or PrelaunchUser models
+            if not (Profile.objects.filter(referral_code=referred_by).exists() or PrelaunchUser.objects.filter(referral_code=referred_by).exists()):
                 raise serializers.ValidationError({'referred_by': 'Invalid referral code.'})
         
         return attrs
@@ -71,6 +70,18 @@ class SignUpSerializer(serializers.ModelSerializer):
             avatar=avatar
         )
 
+        # If the signing up email matches a PrelaunchUser, mark them activated and link referrals
+        try:
+            prelaunch_owner = PrelaunchUser.objects.filter(email=email).first()
+            if prelaunch_owner:
+                prelaunch_owner.activated = True
+                prelaunch_owner.save()
+                # Link any prelaunch referrals where this email was the child
+                PrelaunchReferral.objects.filter(child_email=email, child_user__isnull=True).update(child_user=prelaunch_owner)
+        except Exception:
+            # Don't block signup if something goes wrong here
+            pass
+
         # If user was referred, create referral record
         if referred_by:
             
@@ -86,20 +97,26 @@ class SignUpSerializer(serializers.ModelSerializer):
             # Check if referral code belongs to a prelaunch user
             elif PrelaunchUser.objects.filter(referral_code=referred_by).exists():
                 parent_prelaunch_user = PrelaunchUser.objects.get(referral_code=referred_by)
-                # Create UserReferral for main user tracking
+
+                # Create UserReferral for main user tracking (no parent_profile)
                 UserReferral.objects.create(
                     parent_referral_code=referred_by,
                     child_email=email,
                     child_profile=profile,
-                    parent_profile=None  # No main user profile for prelaunch referrals
+                    parent_profile=None
                 )
+
                 # Create PrelaunchReferral for prelaunch user tracking
                 PrelaunchReferral.objects.create(
                     parent_referral_code=referred_by,
                     child_email=email,
-                    child_user=None,  # No prelaunch user record for this email
+                    child_user=None,
                     parent_user=parent_prelaunch_user
                 )
+
+                # Mark the prelaunch user as activated (they successfully referred someone who signed up)
+                parent_prelaunch_user.activated = True
+                parent_prelaunch_user.save()
 
         # Generate OTP for email verification
         otp = generate_otp(6)
