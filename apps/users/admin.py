@@ -31,7 +31,16 @@ class CustomAdminClass(ModelAdmin):
     
 @admin.register(Profile)
 class UserProfileAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'name', 'referral_code_display', 'referred_by_display', 'referred_users_emails', 'avatar_display', 'referral_count_display')
+    list_display = (
+        'id', 
+        'name', 
+        'user', 
+        'referral_code_display', 
+        'referred_by_display', 
+        'referred_users_emails', 
+        'avatar_display', 
+        'referral_count_display'
+        )
     list_display_links = ('id', 'user', 'name')
     search_fields = ('user__email', 'name', 'referral_code', 'referred_by')
     readonly_fields = ('referral_code', 'referral_link_display', 'referral_count')

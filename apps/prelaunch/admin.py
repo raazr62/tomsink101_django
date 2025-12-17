@@ -11,16 +11,25 @@ from django.utils import timezone
 @admin.register(PrelaunchUser)
 class PrelaunchUserAdmin(ModelAdmin):
     list_display = [
+        'id',
         'name', 
         'email', 
         'referral_code_display', 
-        'referred_by_display',
         'referral_count_display',
         'activated',
-        'created_at'
+        'created_at',
     ]
-    list_filter = ['activated', 'created_at']
-    search_fields = ['name', 'email', 'referral_code', 'referred_by', 'ip_address']
+    list_filter = [
+        'activated', 
+        'created_at'
+        ]
+    search_fields = [
+        'name', 
+        'email', 
+        'referral_code', 
+        'referred_by', 
+        'ip_address'
+        ]
     readonly_fields = [
         'referral_code',
         'referral_link_display',
@@ -60,12 +69,12 @@ class PrelaunchUserAdmin(ModelAdmin):
     # Referral Code
     def referral_code_display(self, obj):
         return format_html(
-            '<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{}</code>',
+            '<code style="padding: 2px 6px; border-radius: 3px;">{}</code>',
             obj.referral_code
         )
-    referral_code_display.short_description = 'Referral Code'
+    referral_code_display.short_description = 'Own Referral Code'
 
-    # Referred By
+    # Referred By Code
     def referred_by_display(self, obj):
         if obj.referred_by:
             try:
@@ -79,8 +88,31 @@ class PrelaunchUserAdmin(ModelAdmin):
             except PrelaunchUser.DoesNotExist:
                 return format_html('<code>{}</code>', obj.referred_by)
         return '-'
-    referred_by_display.short_description = 'Referred By'
+    referred_by_display.short_description = 'Referred By Code'
 
+    # Referred Users Emails
+    def referred_users_emails(self, obj):
+        # Try both the relationship and direct query by referral code
+        referrals = PrelaunchReferral.objects.filter(parent_referral_code=obj.referral_code)
+        if not referrals.exists():
+            # Fallback to relationship if referral codes don't match
+            referrals = obj.referrals_made.all()
+        
+        if referrals.exists():
+            emails = []
+            for referral in referrals[:5]:  # Limit to first 5 to avoid too long display
+                if referral.child_profile:
+                    emails.append(referral.child_profile.user.email)
+                else:
+                    emails.append(referral.child_email or 'Unknown')
+            
+            if referrals.count() > 5:
+                emails.append(f'... +{referrals.count() - 5} more')
+            
+            return format_html('<code>{}</small>', ', '.join(emails))
+        return '-'
+    referred_users_emails.short_description = 'Referred By Emails'
+    
     # Referral Count with color coding
     def referral_count_display(self, obj):
         count = obj.referral_count
@@ -98,7 +130,7 @@ class PrelaunchUserAdmin(ModelAdmin):
             color,
             count
         )
-    referral_count_display.short_description = 'Referrals'
+    referral_count_display.short_description = 'Total Referrals'
     referral_count_display.admin_order_field = '_referral_count'
 
     # Referral Link
