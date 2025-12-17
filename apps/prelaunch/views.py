@@ -6,7 +6,8 @@ from django.db.models import Count
 from django.db import transaction
 from .models import PrelaunchUser, PrelaunchReferral
 from apps.users.models import User, Profile, UserReferral
-from .helpers import get_client_ip, send_referral_url_email
+from .helpers import get_client_ip
+from .email_templates import send_referral_url_email
 from .serializers import (
     PrelaunchUserSerializer,
     PrelaunchUserDetailSerializer,
@@ -15,7 +16,7 @@ from .serializers import (
     PrelaunchStatsSerializer,
 )
 
-
+# Prelaunch Signup
 class PrelaunchSignupView(APIView):
     permission_classes = [AllowAny]
 
@@ -95,7 +96,7 @@ class PrelaunchSignupView(APIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
+# Prelaunch User Detail
 class PrelaunchUserDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = PrelaunchUserDetailSerializer
@@ -111,15 +112,8 @@ class PrelaunchUserDetailView(generics.RetrieveAPIView):
         else:
             raise ValueError("Must provide either 'code' or 'email' parameter")
 
-
+# Leaderboard
 class PrelaunchLeaderboardView(APIView):
-    """
-    GET endpoint to retrieve referral leaderboard.
-    Shows top users by referral count.
-    
-    Query params:
-    - limit: Number of results (default: 10, max: 100)
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -153,18 +147,8 @@ class PrelaunchLeaderboardView(APIView):
             'data': serializer.data
         })
 
-
+# Overall Statistics
 class PrelaunchStatsView(APIView):
-    """
-    GET endpoint for overall pre-launch statistics.
-    
-    Returns:
-    - Total signups
-    - Total referrals
-    - Total activated users
-    - Top 5 referrers
-    - 5 most recent signups
-    """
     permission_classes = [AllowAny]  # Change to IsAdminUser for admin-only access
 
     def get(self, request):
@@ -211,14 +195,8 @@ class PrelaunchStatsView(APIView):
             'data': serializer.data
         })
 
-
+# User Referrals
 class UserReferralsView(APIView):
-    """
-    GET endpoint to retrieve all referrals made by a specific user.
-    
-    Query params:
-    - code: Referral code of the user
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -258,14 +236,8 @@ class UserReferralsView(APIView):
                 "data": None
             }, status=status.HTTP_404_NOT_FOUND)
 
-
+# Validate Referral Code
 class CheckReferralCodeView(APIView):
-    """
-    GET endpoint to validate a referral code.
-    
-    Query params:
-    - code: Referral code to validate
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -300,14 +272,8 @@ class CheckReferralCodeView(APIView):
                 "message": "Invalid referral code."
             })
 
-
+# Check Email Existence
 class CheckEmailView(APIView):
-    """
-    GET endpoint to check if an email is already registered.
-    
-    Query params:
-    - email: Email address to check
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -330,16 +296,8 @@ class CheckEmailView(APIView):
             "message": "Email is already registered." if exists else "Email is available."
         })
 
-
+# Fraud Detection
 class FraudDetectionView(APIView):
-    """
-    GET endpoint to detect potential fraud based on IP address or email patterns.
-    Admin only.
-    
-    Query params:
-    - ip: IP address to check
-    - email: Email to check for duplicates
-    """
     permission_classes = [IsAdminUser]
 
     def get(self, request):

@@ -198,11 +198,6 @@ class ProfileGet(APIView):
 
 # Delete Account
 class DeleteAccountView(APIView):
-    """
-    Delete Account View - Permanently deletes the authenticated user's account.
-    Requires password confirmation and explicit confirmation flag.
-    This action is irreversible and will cascade delete all related data.
-    """
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
@@ -230,10 +225,6 @@ class DeleteAccountView(APIView):
 
 # Verify Email OTP
 class VerifyEmailOTPView(APIView):
-    """
-    API View for verifying email address using OTP
-    POST: Verify email using OTP sent to email
-    """
     permission_classes = []
 
     def post(self, request):
@@ -259,10 +250,6 @@ class VerifyEmailOTPView(APIView):
 
 # Resend Verification OTP
 class ResendVerificationOTPView(APIView):
-    """
-    API View for resending verification OTP
-    POST: Resend verification OTP to user's email
-    """
     permission_classes = []
 
     def post(self, request):
@@ -306,7 +293,6 @@ class GoogleLoginView(APIView):
 
 # Google Login Page
 class GoogleLoginPageView(APIView):
-    """Serve the Google login page"""
     permission_classes = []
     
     def get(self, request):
@@ -318,7 +304,6 @@ class GoogleLoginPageView(APIView):
 
 # Google Test Endpoint
 class GoogleTestView(APIView):
-    """Simple test endpoint for Google authentication"""
     permission_classes = []
     
     def get(self, request):
@@ -348,7 +333,6 @@ class GoogleTestView(APIView):
 
 # Google OAuth Callback
 class GoogleCallbackView(APIView):
-    """Handle Google OAuth callback"""
     permission_classes = []
     
     def get(self, request):

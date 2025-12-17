@@ -3,25 +3,13 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
-from django.utils import timezone
 from .managers import UserManager
 from django.contrib.auth.hashers import check_password
-from django.utils.text import slugify
-import secrets
-import string
 from cloudinary.models import CloudinaryField
+from django.conf import settings
+from .helpers import generate_referral_code
 
-def generate_referral_code(name):
-    # Create slug from name (max 10 chars to keep code short)
-    name_slug = slugify(name)[:10]
-    
-    # Generate 6 random alphanumeric characters
-    random_chars = ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
-    
-    return f"{name_slug}-{random_chars}"
-
-
-
+# AbstractBase User
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_("email address"), unique=True)
     is_staff = models.BooleanField(default=False)
@@ -43,18 +31,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email or f"User {self.pk}"
     
+    # Check OTP expiration
     def is_verification_otp_expired(self):
-        """Check if email verification OTP is expired"""
         if not self.otp_expires_at:
             return True
         return timezone.now() > self.otp_expires_at
     
+    # Check OTP match
     def check_verification_otp(self, raw_otp):
-        """Check if the provided OTP matches the stored verification OTP"""
         if not self.email_verification_otp:
             return False
         return check_password(raw_otp, self.email_verification_otp)
 
+# Profile
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     name = models.CharField(max_length=30, blank=True)
@@ -73,11 +62,8 @@ class Profile(models.Model):
             return self.user.email
         return "Profile"
 
+    # Generate referral
     def save(self, *args, **kwargs):
-        """
-        Auto-generate referral code if not provided.
-        Ensure uniqueness by regenerating if collision occurs.
-        """
         if not self.referral_code and self.name:
             # Generate a unique referral code
             while True:
@@ -87,54 +73,27 @@ class Profile(models.Model):
                     break
         super().save(*args, **kwargs)
 
+    # Referral link
     @property
     def referral_link(self):
-        """
-        Returns the full referral link for this user.
-        You can customize the domain in your settings.
-        """
-        from django.conf import settings
-        base_url = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000/')
-        return f"{base_url}/api/signup/?ref={self.referral_code}"
+        base_url = getattr(settings, 'SITE_URL', 'https://astonishing-cupcake-ab36d3.netlify.app')
+        return f"{base_url}/sign-up/?ref={self.referral_code}"
 
+    # Referral count
     @property
     def referral_count(self):
-        """Returns the number of successful referrals for this user."""
         return self.referrals_made.count()
 
     def get_referrals(self):
-        """Returns queryset of all users referred by this user."""
         return Profile.objects.filter(referred_by=self.referral_code)
 
-
+# Referral
 class UserReferral(models.Model):
-    """
-    Logs every successful referral event for main user signups.
-    This creates a clean separation for tracking and analytics.
-    """
-    parent_referral_code = models.CharField(
-        max_length=50,
-        db_index=True,
-        help_text="Referral code of the inviter"
-    )
-    child_email = models.EmailField(
-        db_index=True,
-        help_text="Email of the user who was referred"
-    )
-    child_profile = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        related_name='referral_records',
-        help_text="The profile who was referred"
-    )
-    parent_profile = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        related_name='referrals_made',
-        null=True,
-        blank=True,
-        help_text="The profile who made the referral"
-    )
+    parent_referral_code = models.CharField(max_length=50, db_index=True,help_text="Referral code of the inviter")
+    child_email = models.EmailField(db_index=True, help_text="Email of the user who was referred")
+    child_profile = models.ForeignKey(Profile, on_delete=models.CASCADE,
+    related_name='referral_records', help_text="The profile who was referred")
+    parent_profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='referrals_made', null=True, blank=True, help_text="The profile who made the referral")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -153,9 +112,6 @@ class UserReferral(models.Model):
         return f"{self.parent_referral_code} → {self.child_email}"
 
     def save(self, *args, **kwargs):
-        """
-        Auto-populate parent_profile if not set.
-        """
         if not self.parent_profile:
             try:
                 self.parent_profile = Profile.objects.get(referral_code=self.parent_referral_code)
@@ -163,13 +119,14 @@ class UserReferral(models.Model):
                 pass
         super().save(*args, **kwargs)
 
-
+# OTP Purpose Choices
 PURPOSE = (
     ('password_reset', 'Password Reset'),
     ('login', 'Login'),
     ('delete_account', 'Delete Account')
 )
 
+# OTP 
 class OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otps')
     otp = models.CharField(max_length=255)

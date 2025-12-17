@@ -1,12 +1,19 @@
 import secrets
 from django.core.mail import EmailMessage
 from django.conf import settings
+from google.auth.transport import requests
+from google.oauth2 import id_token
+from apps.users.models import User, Profile
+from django.contrib.auth import authenticate
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.tokens import RefreshToken
 
+# Generate OTP
 def generate_otp(length=6):
-    """Generate a random OTP of specified length"""
     digits = '0123456789'
     return ''.join(secrets.choice(digits) for _ in range(length))
 
+# Normal Email
 def send_normal_mail(data):
     email = EmailMessage(
         subject=data['subject'],
@@ -16,9 +23,8 @@ def send_normal_mail(data):
     )
     email.send()
 
+# Verification Email
 def send_verification_otp_email(user, otp):
-    """Send OTP email for email verification"""
-    # Get referral link if profile exists
     referral_link = ""
     try:
         if hasattr(user, 'profile'):
@@ -52,8 +58,8 @@ Strenno Team
     )
     email.send()
 
+# Verification Success Email
 def send_verification_success_email(user):
-    """Send confirmation email after successful verification"""
     subject = "Email Verified Successfully"
     body = f"""
 Hello {user.email},
@@ -71,18 +77,8 @@ Strenno Team
         to=[user.email]
     )
     email.send()
-    
-    
-    
-from google.auth.transport import requests
-from google.oauth2 import id_token
-from apps.users.models import User, Profile
-from django.contrib.auth import authenticate
-from django.conf import settings
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.tokens import RefreshToken
 
-
+# Google Authentication
 class Google():
     @staticmethod
     def validate(access_token):  
@@ -99,7 +95,7 @@ class Google():
             print(f"Token verification failed: {e}")
             raise AuthenticationFailed("Token is invalid")
 
-
+# Register or Authenticate with Google
 def register_with_google(provider, email, first_name, last_name):
     old_user = User.objects.filter(email=email)
     if old_user.exists():
