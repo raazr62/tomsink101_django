@@ -28,7 +28,7 @@ class CustomAdminClass(ModelAdmin):
     
     def check_is_superuser(self, obj):
         return 'YES' if obj.is_superuser else 'NO'
-    
+
 @admin.register(Profile)
 class UserProfileAdmin(ModelAdmin):
     list_display = (
@@ -37,7 +37,7 @@ class UserProfileAdmin(ModelAdmin):
         'user', 
         'referral_code_display', 
         'referred_by_display', 
-        'referred_users_emails', 
+        'referred_by_emails', 
         'avatar_display', 
         'referral_count_display'
         )
@@ -107,28 +107,31 @@ class UserProfileAdmin(ModelAdmin):
     referral_count_display.short_description = 'Total Referrals'
     referral_count_display.admin_order_field = '_referral_count'
 
-    # Referred Users Emails Display
-    def referred_users_emails(self, obj):
-        # Try both the relationship and direct query by referral code
-        referrals = UserReferral.objects.filter(parent_referral_code=obj.referral_code)
-        if not referrals.exists():
-            # Fallback to relationship if referral codes don't match
-            referrals = obj.referrals_made.all()
-        
-        if referrals.exists():
-            emails = []
-            for referral in referrals[:5]:  # Limit to first 5 to avoid too long display
-                if referral.child_profile:
-                    emails.append(referral.child_profile.user.email)
-                else:
-                    emails.append(referral.child_email or 'Unknown')
-            
-            if referrals.count() > 5:
-                emails.append(f'... +{referrals.count() - 5} more')
-            
-            return format_html('<code>{}</small>', ', '.join(emails))
+    # Referred By provider Email (mirrors referred_by_display logic)
+    def referred_by_emails(self, obj):
+        if obj.referred_by:
+            # Try main Profile first
+            try:
+                parent = Profile.objects.get(referral_code=obj.referred_by)
+                return format_html(
+                    '<a href="?referral_code={}">{}</a>',
+                    obj.referred_by,
+                    parent.user.email
+                )
+            except Profile.DoesNotExist:
+                # Fallback to PrelaunchUser
+                try:
+                    from apps.prelaunch.models import PrelaunchUser
+                    parent_pl = PrelaunchUser.objects.get(referral_code=obj.referred_by)
+                    return format_html(
+                        '<a href="?prelaunch_referral_code={}">{}</a>',
+                        obj.referred_by,
+                        parent_pl.email
+                    )
+                except Exception:
+                    return format_html('<code>{}</code>', obj.referred_by)
         return '-'
-    referred_users_emails.short_description = 'Referred By Emails'
+    referred_by_emails.short_description = 'Referred By Email'
 
     # Referral Link Display
     def referral_link_display(self, obj):
