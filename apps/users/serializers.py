@@ -6,10 +6,10 @@ from django.contrib.auth.hashers import make_password
 from django.utils.timezone import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-from .utils import generate_otp, send_normal_mail, send_verification_otp_email
+from .email_templates import generate_otp, send_normal_mail, send_verification_otp_email
 from django.utils import timezone
 from apps.prelaunch.models import PrelaunchUser, PrelaunchReferral
-from apps.users.utils import Google, register_with_google
+from apps.users.email_templates import Google, register_with_google
 from rest_framework.exceptions import AuthenticationFailed
 
 
@@ -137,7 +137,6 @@ class SignUpSerializer(serializers.ModelSerializer):
 
 # SignIn
 class SignInSerializer(serializers.Serializer):
-
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     refresh_token = serializers.CharField(read_only=True)
@@ -445,7 +444,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 # Delete Account
 class DeleteAccountSerializer(serializers.Serializer):
-
     confirm_deletion = serializers.BooleanField(required=True)
     
     def validate_confirm_deletion(self, value):
@@ -461,7 +459,6 @@ class DeleteAccountSerializer(serializers.Serializer):
 
 # Verify Email OTP
 class VerifyEmailOTPSerializer(serializers.Serializer):
-
     email = serializers.EmailField(required=True)
     otp_code = serializers.CharField(required=True, max_length=6, min_length=6)
     
@@ -500,7 +497,7 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
     
     def save(self):
         """Mark email as verified"""
-        from .utils import send_verification_success_email
+        from .email_templates import send_verification_success_email
         
         self.user.is_email_verified = True
         self.user.email_verification_otp = None
@@ -519,11 +516,9 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
 
 # Resend Verification OTP
 class ResendVerificationOTPSerializer(serializers.Serializer):
-    """Serializer for resending verification OTP"""
     email = serializers.EmailField(required=True)
     
     def validate(self, attrs):
-        """Validate email exists and needs verification"""
         email = attrs.get('email')
         try:
             user = User.objects.get(email=email)
@@ -538,9 +533,7 @@ class ResendVerificationOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError({'email': 'No account found with this email address.'})
     
     def save(self):
-        """Generate new OTP and send email"""
-        from .utils import send_verification_otp_email
-        
+
         # Generate new OTP
         otp = generate_otp(6)
         self.user.email_verification_otp = make_password(otp)

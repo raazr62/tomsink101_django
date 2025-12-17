@@ -31,7 +31,7 @@ class CustomAdminClass(ModelAdmin):
     
 @admin.register(Profile)
 class UserProfileAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'name', 'referral_code_display', 'referred_by_display', 'referral_count_display', 'avatar_display', 'dob')
+    list_display = ('id', 'user', 'name', 'referral_code_display', 'referred_by_display', 'referred_users_emails', 'avatar_display', 'referral_count_display')
     list_display_links = ('id', 'user', 'name')
     search_fields = ('user__email', 'name', 'referral_code', 'referred_by')
     readonly_fields = ('referral_code', 'referral_link_display', 'referral_count')
@@ -45,41 +45,41 @@ class UserProfileAdmin(ModelAdmin):
     )
     ordering = ['-user__created_at']
 
+    # Override get_queryset to annotate referral counts
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         queryset = queryset.annotate(
             _referral_count=Count('referrals_made')
         )
         return queryset
-
+    
+    # Referral Code Display
     def referral_code_display(self, obj):
-        """Display referral code with copy button."""
         if obj.referral_code:
             return format_html(
-                '<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{}</code>',
+                '<code style=padding: 2px 6px; border-radius: 3px;">{}</code>',
                 obj.referral_code
             )
         return '-'
-    referral_code_display.short_description = 'Referral Code'
+    referral_code_display.short_description = 'Own Referral Code'
 
+    # Referred By email Display
     def referred_by_display(self, obj):
-        """Display who referred this user."""
         if obj.referred_by:
             try:
                 parent = Profile.objects.get(referral_code=obj.referred_by)
                 return format_html(
-                    '<a href="?referral_code={}">{}</a> ({})',
+                    '<a href="?referral_code={}">{}</a>',
                     obj.referred_by,
-                    parent.name or parent.user.email,
-                    obj.referred_by
+                    parent.user.email
                 )
             except Profile.DoesNotExist:
                 return format_html('<code>{}</code>', obj.referred_by)
         return '-'
-    referred_by_display.short_description = 'Referred By'
+    referred_by_display.short_description = 'Referred By Code'
 
+    # Referral Count Display with color coding
     def referral_count_display(self, obj):
-        """Display number of referrals with color coding."""
         count = obj.referral_count
         if count == 0:
             color = '#999'
@@ -95,11 +95,34 @@ class UserProfileAdmin(ModelAdmin):
             color,
             count
         )
-    referral_count_display.short_description = 'Referrals'
+    referral_count_display.short_description = 'Total Referrals'
     referral_count_display.admin_order_field = '_referral_count'
 
+    # Referred Users Emails Display
+    def referred_users_emails(self, obj):
+        # Try both the relationship and direct query by referral code
+        referrals = UserReferral.objects.filter(parent_referral_code=obj.referral_code)
+        if not referrals.exists():
+            # Fallback to relationship if referral codes don't match
+            referrals = obj.referrals_made.all()
+        
+        if referrals.exists():
+            emails = []
+            for referral in referrals[:5]:  # Limit to first 5 to avoid too long display
+                if referral.child_profile:
+                    emails.append(referral.child_profile.user.email)
+                else:
+                    emails.append(referral.child_email or 'Unknown')
+            
+            if referrals.count() > 5:
+                emails.append(f'... +{referrals.count() - 5} more')
+            
+            return format_html('<code>{}</small>', ', '.join(emails))
+        return '-'
+    referred_users_emails.short_description = 'Referred By Emails'
+
+    # Referral Link Display
     def referral_link_display(self, obj):
-        """Display clickable referral link."""
         if obj.referral_code:
             return format_html(
                 '<a href="{}" target="_blank">{}</a>',
@@ -109,13 +132,12 @@ class UserProfileAdmin(ModelAdmin):
         return '-'
     referral_link_display.short_description = 'Referral Link'
 
+    # Avatar Display
     def avatar_display(self, obj):
-        """Display avatar image or 'No Image'."""
         if obj.avatar:
             return format_html('<img src="{}" style="max-height: 50px; max-width: 50px;" />', obj.avatar.url)
         return "No Image"
     avatar_display.short_description = 'Avatar'
-
 
 @admin.register(UserReferral)
 class UserReferralAdmin(ModelAdmin):
@@ -142,8 +164,8 @@ class UserReferralAdmin(ModelAdmin):
     ordering = ['-created_at']
     date_hierarchy = 'created_at'
 
+    # Parent Display
     def parent_display(self, obj):
-        """Display parent user info."""
         if obj.parent_profile:
             return format_html(
                 '<strong>{}</strong><br><small>{}</small><br><code>{}</code>',
@@ -154,8 +176,8 @@ class UserReferralAdmin(ModelAdmin):
         return format_html('<code>{}</code>', obj.parent_referral_code)
     parent_display.short_description = 'Referrer'
 
+    # Child Display
     def child_display(self, obj):
-        """Display child user info."""
         if obj.child_profile:
             return format_html(
                 '<strong>{}</strong><br><small>{}</small>',
@@ -165,6 +187,6 @@ class UserReferralAdmin(ModelAdmin):
         return obj.child_email
     child_display.short_description = 'Referred User'
 
+    # Disable add permission
     def has_add_permission(self, request):
-        """Disable manual creation of referrals."""
         return False

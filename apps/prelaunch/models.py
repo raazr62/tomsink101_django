@@ -4,7 +4,6 @@ from .helpers import generate_referral_code
 
 # Prelaunch User
 class PrelaunchUser(models.Model):
-
     name = models.CharField(max_length=255, help_text="User's full name")
     email = models.EmailField(unique=True, db_index=True, help_text="User's email address (must be unique)")
     referral_code = models.CharField(max_length=50, unique=True, db_index=True,help_text="User's unique referral code to share with others")

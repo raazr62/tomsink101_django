@@ -1,8 +1,11 @@
+import csv
 from django.contrib import admin
 from django.db.models import Count
 from django.utils.html import format_html
 from .models import PrelaunchUser, PrelaunchReferral
 from unfold.admin import ModelAdmin
+from django.http import HttpResponse
+from django.utils import timezone
 
 
 @admin.register(PrelaunchUser)
@@ -46,6 +49,7 @@ class PrelaunchUserAdmin(ModelAdmin):
     ordering = ['-created_at']
     date_hierarchy = 'created_at'
 
+    # GET Queryset with referral count
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         queryset = queryset.annotate(
@@ -53,16 +57,16 @@ class PrelaunchUserAdmin(ModelAdmin):
         )
         return queryset
 
+    # Referral Code
     def referral_code_display(self, obj):
-        """Display referral code with copy button."""
         return format_html(
             '<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{}</code>',
             obj.referral_code
         )
     referral_code_display.short_description = 'Referral Code'
 
+    # Referred By
     def referred_by_display(self, obj):
-        """Display who referred this user."""
         if obj.referred_by:
             try:
                 parent = PrelaunchUser.objects.get(referral_code=obj.referred_by)
@@ -77,8 +81,8 @@ class PrelaunchUserAdmin(ModelAdmin):
         return '-'
     referred_by_display.short_description = 'Referred By'
 
+    # Referral Count with color coding
     def referral_count_display(self, obj):
-        """Display number of referrals with color coding."""
         count = obj.referral_count
         if count == 0:
             color = '#999'
@@ -97,8 +101,8 @@ class PrelaunchUserAdmin(ModelAdmin):
     referral_count_display.short_description = 'Referrals'
     referral_count_display.admin_order_field = '_referral_count'
 
+    # Referral Link
     def referral_link_display(self, obj):
-        """Display clickable referral link."""
         return format_html(
             '<a href="{}" target="_blank">{}</a>',
             obj.referral_link,
@@ -108,24 +112,20 @@ class PrelaunchUserAdmin(ModelAdmin):
 
     actions = ['activate_users', 'deactivate_users', 'export_csv']
 
+    # Activate Users
     def activate_users(self, request, queryset):
-        """Bulk activate users."""
         updated = queryset.update(activated=True)
         self.message_user(request, f'{updated} user(s) activated successfully.')
     activate_users.short_description = 'Activate selected users'
 
+    # Deactivate Users
     def deactivate_users(self, request, queryset):
-        """Bulk deactivate users."""
         updated = queryset.update(activated=False)
         self.message_user(request, f'{updated} user(s) deactivated successfully.')
     deactivate_users.short_description = 'Deactivate selected users'
 
+    # Export to CSV
     def export_csv(self, request, queryset):
-        """Export selected users to CSV."""
-        import csv
-        from django.http import HttpResponse
-        from django.utils import timezone
-
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="prelaunch_users_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
         
@@ -149,7 +149,6 @@ class PrelaunchUserAdmin(ModelAdmin):
         
         return response
     export_csv.short_description = 'Export selected to CSV'
-
 
 @admin.register(PrelaunchReferral)
 class PrelaunchReferralAdmin(ModelAdmin):
@@ -176,8 +175,8 @@ class PrelaunchReferralAdmin(ModelAdmin):
     ordering = ['-created_at']
     date_hierarchy = 'created_at'
 
+    # Parent Display
     def parent_display(self, obj):
-        """Display parent user info."""
         if obj.parent_user:
             return format_html(
                 '<strong>{}</strong><br><small>{}</small><br><code>{}</code>',
@@ -188,8 +187,8 @@ class PrelaunchReferralAdmin(ModelAdmin):
         return format_html('<code>{}</code>', obj.parent_referral_code)
     parent_display.short_description = 'Referrer'
 
+    # Child Display
     def child_display(self, obj):
-        """Display child user info."""
         if obj.child_user:
             return format_html(
                 '<strong>{}</strong><br><small>{}</small>',
@@ -199,6 +198,6 @@ class PrelaunchReferralAdmin(ModelAdmin):
         return obj.child_email
     child_display.short_description = 'Referred User'
 
+    # Prevent addition
     def has_add_permission(self, request):
-        """Disable manual creation of referrals."""
         return False
