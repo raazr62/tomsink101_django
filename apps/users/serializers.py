@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from django.utils.timezone import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-from .email_templates import generate_otp, send_normal_mail, send_verification_otp_email
+from .email_templates import generate_otp, send_normal_mail, send_verification_otp_email, send_verification_success_email
 from django.utils import timezone
 from apps.prelaunch.models import PrelaunchUser, PrelaunchReferral
 from apps.users.email_templates import Google, register_with_google
@@ -514,7 +514,6 @@ class VerifyEmailOTPSerializer(serializers.Serializer):
     
     def save(self):
         """Mark email as verified"""
-        from .email_templates import send_verification_success_email
         
         self.user.is_email_verified = True
         self.user.email_verification_otp = None
