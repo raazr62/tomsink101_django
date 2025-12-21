@@ -8,7 +8,7 @@ from django.db.models import Count
 class CustomAdminClass(ModelAdmin):
     list_display = ('id', 'email', 'name', 'is_email_verified', 'otp_attempts', 'preview_user_image', 'check_is_superuser')
     list_display_links = ('id', 'email', 'name', 'preview_user_image', 'check_is_superuser')
-    search_fields = ('email', 'name')
+    search_fields = ('name',)
     list_filter = ('is_email_verified', 'is_active', 'is_superuser')
 
 
