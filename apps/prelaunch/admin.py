@@ -7,7 +7,7 @@ from unfold.admin import ModelAdmin
 from django.http import HttpResponse
 from django.utils import timezone
 
-
+# Prelaunch User
 @admin.register(PrelaunchUser)
 class PrelaunchUserAdmin(ModelAdmin):
     list_display = [
@@ -15,6 +15,8 @@ class PrelaunchUserAdmin(ModelAdmin):
         'name', 
         'email', 
         'referral_code_display', 
+        'referred_by_display',
+        'referred_by_emails',
         'referral_count_display',
         'activated',
         'created_at',
@@ -80,9 +82,8 @@ class PrelaunchUserAdmin(ModelAdmin):
             try:
                 parent = PrelaunchUser.objects.get(referral_code=obj.referred_by)
                 return format_html(
-                    '<a href="?referral_code={}">{}</a> ({})',
+                    '<a href="?referral_code={}">{}</a>',
                     obj.referred_by,
-                    parent.name,
                     obj.referred_by
                 )
             except PrelaunchUser.DoesNotExist:
@@ -182,6 +183,32 @@ class PrelaunchUserAdmin(ModelAdmin):
         return response
     export_csv.short_description = 'Export selected to CSV'
 
+    # Referred By provider Email (mirrors referred_by_display logic)
+    def referred_by_emails(self, obj):
+        if obj.referred_by:
+            # Try main Profile first
+            try:
+                parent = PrelaunchUser.objects.get(referral_code=obj.referred_by)
+                return format_html(
+                    '<a href="?referral_code={}">{}</a>',
+                    obj.referred_by,
+                    parent.email
+                )
+            except PrelaunchUser.DoesNotExist:
+                # Fallback to PrelaunchUser
+                try:
+                    parent_pl = PrelaunchUser.objects.get(referral_code=obj.referred_by)
+                    return format_html(
+                        '<a href="?prelaunch_referral_code={}">{}</a>',
+                        obj.referred_by,
+                        parent_pl.email
+                    )
+                except Exception:
+                    return format_html('<code>{}</code>', obj.referred_by)
+        return '-'
+    referred_by_emails.short_description = 'Referred By Email'
+
+# Prelaunch Referral
 @admin.register(PrelaunchReferral)
 class PrelaunchReferralAdmin(ModelAdmin):
     list_display = [

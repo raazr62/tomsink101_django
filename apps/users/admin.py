@@ -3,7 +3,9 @@ from unfold.admin import ModelAdmin
 from .models import User, Profile, UserReferral
 from django.utils.html import format_html
 from django.db.models import Count
+from apps.prelaunch.models import PrelaunchUser
 
+# User
 @admin.register(User)
 class CustomAdminClass(ModelAdmin):
     list_display = ('id', 'email', 'name', 'is_email_verified', 'otp_attempts', 'preview_user_image', 'check_is_superuser')
@@ -29,6 +31,7 @@ class CustomAdminClass(ModelAdmin):
     def check_is_superuser(self, obj):
         return 'YES' if obj.is_superuser else 'NO'
 
+# Profile
 @admin.register(Profile)
 class UserProfileAdmin(ModelAdmin):
     list_display = (
@@ -121,7 +124,6 @@ class UserProfileAdmin(ModelAdmin):
             except Profile.DoesNotExist:
                 # Fallback to PrelaunchUser
                 try:
-                    from apps.prelaunch.models import PrelaunchUser
                     parent_pl = PrelaunchUser.objects.get(referral_code=obj.referred_by)
                     return format_html(
                         '<a href="?prelaunch_referral_code={}">{}</a>',
@@ -151,6 +153,7 @@ class UserProfileAdmin(ModelAdmin):
         return "No Image"
     avatar_display.short_description = 'Avatar'
 
+# User Referral
 @admin.register(UserReferral)
 class UserReferralAdmin(ModelAdmin):
     list_display = [
