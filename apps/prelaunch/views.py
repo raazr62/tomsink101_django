@@ -7,7 +7,7 @@ from django.db import transaction
 from .models import PrelaunchUser, PrelaunchReferral
 from apps.users.models import User, Profile, UserReferral
 from .helpers import get_client_ip
-from .email_templates import send_referral_url_email
+from .email_templates import send_referral_url_email, send_verification_success_email
 from .serializers import (
     PrelaunchUserSerializer,
     PrelaunchUserDetailSerializer,
@@ -72,6 +72,13 @@ class PrelaunchSignupView(APIView):
                 except Exception as e:
                     # Log the error but don't fail the signup
                     print(f"Failed to send referral email: {str(e)}")
+
+                # Send verification success email
+                try:
+                    send_verification_success_email(user)
+                except Exception as e:
+                    # Log the error but don't fail the signup
+                    print(f"Failed to send verification success email: {str(e)}")
                 
                 # Return success response
                 return Response({

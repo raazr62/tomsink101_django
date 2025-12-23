@@ -40,8 +40,8 @@ class PrelaunchUser(models.Model):
 
     @property
     def referral_link(self):
-        base_url = getattr(settings, 'SITE_URL', 'https://astonishing-cupcake-ab36d3.netlify.app')
-        return f"{base_url}/sign-up/?ref={self.referral_code}"
+        base_url = getattr(settings, 'SITE_URL', 'https://superb-druid-40aa23.netlify.app')
+        return f"{base_url}/early-access/?ref={self.referral_code}"
 
     @property
     def referral_count(self):
