@@ -203,6 +203,8 @@ STATICFILES_DIRS = [
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+# Site URL for absolute links in emails
+SITE_URL = os.getenv('SITE_URL', 'https://strennio.ai')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

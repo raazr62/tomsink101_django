@@ -43,6 +43,9 @@ def send_verification_success_email(user):
     context = {
         'user_name': name,
         'referral_link': referral_link,
+        'habit_guide_url': f"{settings.SITE_URL}/media/downloads/Habit%20and%20Accountability%20Guide.pdf",
+        'nutrition_guide_url': f"{settings.SITE_URL}/media/downloads/Strenno%20Nutrition%20and%20Diet%20Guide.pdf",
+        'tracker_url': f"{settings.SITE_URL}/media/downloads/Strenno%20Daily%20Fitness%20Tracker.pdf",
     }
 
     html_message = render_to_string('email/verification_success.html', context)
