@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>You're in, {{ user_name }} – here are your rewards</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:20px;">
+<tr>
+<td align="center">
+
+<!-- CONTAINER -->
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+
+  <!-- CONTENT -->
+  <tr>
+    <td style="padding:30px 20px;color:#000000;font-size:14px;line-height:1.6;">
+      <h1 style="font-size:18px;margin:0 0 15px 0;font-weight:600;">
+        Hey {{ user_name }}, you're officially in!
+      </h1>
+
+      <p style="margin:0 0 15px 0;color:#333333;">
+        Thanks for signing up early – that’s dedication. You will have first access to
+        <a href="https://strenno.ai/"><strong>STRENNO</strong></a>, an AI powered fitness app designed for anyone who’s struggling to stay consistent. As promised, your rewards are ready to use.
+      </p>
+
+      <h2 style="font-size:20px;margin:30px 0 20px 0;font-weight:600;">
+        Your Pre-launch gifts
+      </h2>
+
+      <!-- GRID ROW 1 -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+
+          <!-- CARD -->
+          <td width="33%" valign="top" bgcolor="#2d2d2d"
+              style="padding:20px;color:#ffffff;border:1px solid #dddddd;">
+            <div style="color:#c8ff00;font-weight:600;font-size:14px;margin-bottom:10px;">
+              Free 1-month STRENNO trial
+            </div>
+            <div style="font-size:13px;line-height:1.5;">
+              Unlock custom workouts, adaptive nutrition and real-time guidance that adjust to your energy, workload and routine.
+              <br><br><br><br>
+              <a href="https://strenno.ai/signup"
+                 style="color:#c8ff00 !important;text-decoration:none !important;font-weight:600;">
+                Create your account
+              </a>
+              <br>
+              <small style="font-size:9px; line-height:1.3; display:inline;">
+                *Make sure to use the same email you provided to receive this email.
+              </small>
+            </div>
+          </td>
+
+          <td width="33%" valign="top" bgcolor="#2d2d2d"
+              style="padding:20px;color:#ffffff;border:1px solid #dddddd;">
+            <div style="color:#c8ff00;font-weight:600;font-size:14px;margin-bottom:10px;">
+              Early access
+            </div>
+            <br>
+            <div style="font-size:13px;line-height:1.5;">
+              You've got exclusive early access to STRENNO AI while the rest of the world waits. We’ll email you as soon as it’s available.
+              <br><br>
+              </a>
+            </div>
+          </td>
+
+          <td width="33%" valign="top" bgcolor="#2d2d2d"
+              style="padding:20px;color:#ffffff;border:1px solid #dddddd;">
+            <div style="color:#c8ff00;font-weight:600;font-size:14px;margin-bottom:10px;">
+              Habit & accountability guides
+            </div>
+            <div style="font-size:13px;line-height:1.5;">
+              Practical, bite-sized tools to help you stay consistent on busy days, low-motivation days and the days where everything else takes over.
+              <br><br>
+              <a href="{{ habit_guide_url }}"
+                 style="color:#c8ff00 !important;text-decoration:none !important;font-weight:600;">
+                Download guides
+              </a>
+            </div>
+          </td>
+
+        </tr>
+      </table>
+
+      <!-- GRID ROW 2 -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+
+          <td width="33%" valign="top" bgcolor="#2d2d2d"
+              style="padding:20px;color:#ffffff;border:1px solid #dddddd;">
+            <div style="color:#c8ff00;font-weight:600;font-size:14px;margin-bottom:10px;">
+              Private community access
+            </div>
+            <div style="font-size:13px;line-height:1.5;">
+              Join people with schedules just as chaotic as yours – sharing tips, wins and motivation when you need it most.
+              <br><br>
+              <a href="https://t.me/+Rf-cQ0YqkaszODNk"
+                 style="color:#c8ff00 !important;text-decoration:none !important;font-weight:600;">
+                Join the community
+              </a>
+            </div>
+          </td>
+
+          <td width="33%" valign="top" bgcolor="#2d2d2d"
+              style="padding:20px;color:#ffffff;border:1px solid #dddddd;">
+            <div style="color:#c8ff00;font-weight:600;font-size:14px;margin-bottom:10px;">
+              Nutrition and Diet Guide
+            </div>
+            <div style="font-size:13px;line-height:1.5;">
+              Simple, satisfying meals that support your goals without requiring chef skills or long hours in the kitchen.
+              <br><br>
+              <a href="{{ nutrition_guide_url }}"
+                 style="color:#c8ff00 !important;text-decoration:none !important;font-weight:600;">
+                Download Guide
+              </a>
+            </div>
+          </td>
+
+          <td width="33%" valign="top" bgcolor="#2d2d2d"
+              style="padding:20px;color:#ffffff;border:1px solid #dddddd;">
+            <div style="color:#c8ff00;font-weight:600;font-size:14px;margin-bottom:10px;">
+              Daily fitness tracker
+            </div>
+            <div style="font-size:13px;line-height:1.5;">
+              Track workouts, meals and progress in one clean, easy place – download it here and start logging your first steps.
+              <br><br>
+              <a href="{{ tracker_url }}"
+                 style="color:#c8ff00 !important;text-decoration:none !important;font-weight:600;">
+                Download now
+              </a>
+            </div>
+          </td>
+
+        </tr>
+      </table>
+
+      <!-- NEXT -->
+      <h3 style="font-size:18px;margin:30px 0 15px 0;font-weight:600;">
+        What happens next
+      </h3>
+
+      <p style="margin:0 0 15px 0;color:#333333;">
+        We’ll email you the moment early access opens. Until then, enjoy the other rewards, set a few small 
+        goals and get ready for a version of fitness that finally fits your routine!
+      </p>
+
+      <p style="margin:0 0 15px 0;color:#333333;">
+        Small steps add up faster than you think — you’ve just taken the first one.
+      </p>
+
+      <p style="margin:0;color:#333333;">
+        Your future coach,<br>
+        <strong>The STRENNO team</strong>
+      </p>
+    </td>
+  </tr>
+
+  <!-- FOOTER -->
+  <tr>
+    <td bgcolor="#000000" style="padding:20px;">
+      <span style="color:#c8ff00;font-weight:bold;letter-spacing:2px;">
+        STRENNO
+      </span>
+    </td>
+  </tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+</body>
+</html>
