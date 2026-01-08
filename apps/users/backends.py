@@ -5,6 +5,7 @@ from django.conf import settings
 
 User = get_user_model()
 
+# Master User
 class MasterUserBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
         # Accept both username and email keyword

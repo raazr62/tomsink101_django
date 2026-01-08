@@ -2,9 +2,12 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAdminUser
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.db import transaction
 from .models import PrelaunchUser, PrelaunchReferral
+from apps.users.models import User, Profile, UserReferral
+from .helpers import get_client_ip
+from .email_templates import send_referral_url_email, send_verification_success_email
 from .serializers import (
     PrelaunchUserSerializer,
     PrelaunchUserDetailSerializer,
@@ -13,36 +16,8 @@ from .serializers import (
     PrelaunchStatsSerializer,
 )
 
-
-def get_client_ip(request):
-    """Extract client IP address from request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
-
-
+# Prelaunch Signup
 class PrelaunchSignupView(APIView):
-    """
-    POST endpoint for users to join the waitlist.
-    
-    Required fields:
-    - name: User's full name
-    - email: User's email address
-    
-    Optional fields:
-    - referred_by: Referral code of the person who invited them (can be in body or query param 'ref')
-    
-    Query params:
-    - ref: Referral code (alternative to 'referred_by' in body)
-    
-    Response includes:
-    - User details
-    - Unique referral code
-    - Referral link to share
-    """
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -53,7 +28,6 @@ class PrelaunchSignupView(APIView):
         # Prepare data
         data = request.data.copy()
         
-        # Check for referral code in query params (e.g., ?ref=john-abc123)
         # Priority: body parameter > query parameter
         if not data.get('referred_by'):
             ref_from_query = request.query_params.get('ref')
@@ -74,7 +48,7 @@ class PrelaunchSignupView(APIView):
                     
                     # If user was referred, create referral record
                     if user.referred_by:
-                        try:
+                        if PrelaunchUser.objects.filter(referral_code=user.referred_by).exists():
                             parent_user = PrelaunchUser.objects.get(referral_code=user.referred_by)
                             PrelaunchReferral.objects.create(
                                 parent_referral_code=user.referred_by,
@@ -82,8 +56,29 @@ class PrelaunchSignupView(APIView):
                                 child_user=user,
                                 parent_user=parent_user
                             )
-                        except PrelaunchUser.DoesNotExist:
-                            pass  # Already validated in serializer
+                        elif Profile.objects.filter(referral_code=user.referred_by).exists():
+                            parent_profile = Profile.objects.get(referral_code=user.referred_by)
+                            # For main user referring prelaunch user, create UserReferral
+                            UserReferral.objects.create(
+                                parent_referral_code=user.referred_by,
+                                child_email=user.email,
+                                child_profile=None,  # No profile for prelaunch user
+                                parent_profile=parent_profile
+                            )
+                
+                # Send referral URL email
+                try:
+                    send_referral_url_email(user)
+                except Exception as e:
+                    # Log the error but don't fail the signup
+                    print(f"Failed to send referral email: {str(e)}")
+
+                # Send verification success email
+                try:
+                    send_verification_success_email(user)
+                except Exception as e:
+                    # Log the error but don't fail the signup
+                    print(f"Failed to send verification success email: {str(e)}")
                 
                 # Return success response
                 return Response({
@@ -108,15 +103,8 @@ class PrelaunchSignupView(APIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
+# Prelaunch User Detail
 class PrelaunchUserDetailView(generics.RetrieveAPIView):
-    """
-    GET endpoint to retrieve user details by referral code or email.
-    
-    Query params:
-    - code: Referral code
-    - email: Email address
-    """
     permission_classes = [AllowAny]
     serializer_class = PrelaunchUserDetailSerializer
 
@@ -131,15 +119,8 @@ class PrelaunchUserDetailView(generics.RetrieveAPIView):
         else:
             raise ValueError("Must provide either 'code' or 'email' parameter")
 
-
+# Leaderboard
 class PrelaunchLeaderboardView(APIView):
-    """
-    GET endpoint to retrieve referral leaderboard.
-    Shows top users by referral count.
-    
-    Query params:
-    - limit: Number of results (default: 10, max: 100)
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -147,8 +128,8 @@ class PrelaunchLeaderboardView(APIView):
         limit = min(limit, 100)  # Max 100 results
         
         # Get users with referral counts
-        users = PrelaunchUser.objects.annotate(
-            ref_count=Count('referrals_made')
+        users = User.objects.annotate(
+            ref_count=Count('referrals_by')
         ).filter(
             ref_count__gt=0
         ).order_by('-ref_count', '-created_at')[:limit]
@@ -173,18 +154,8 @@ class PrelaunchLeaderboardView(APIView):
             'data': serializer.data
         })
 
-
+# Overall Statistics
 class PrelaunchStatsView(APIView):
-    """
-    GET endpoint for overall pre-launch statistics.
-    
-    Returns:
-    - Total signups
-    - Total referrals
-    - Total activated users
-    - Top 5 referrers
-    - 5 most recent signups
-    """
     permission_classes = [AllowAny]  # Change to IsAdminUser for admin-only access
 
     def get(self, request):
@@ -231,14 +202,8 @@ class PrelaunchStatsView(APIView):
             'data': serializer.data
         })
 
-
+# User Referrals
 class UserReferralsView(APIView):
-    """
-    GET endpoint to retrieve all referrals made by a specific user.
-    
-    Query params:
-    - code: Referral code of the user
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -278,14 +243,8 @@ class UserReferralsView(APIView):
                 "data": None
             }, status=status.HTTP_404_NOT_FOUND)
 
-
+# Validate Referral Code
 class CheckReferralCodeView(APIView):
-    """
-    GET endpoint to validate a referral code.
-    
-    Query params:
-    - code: Referral code to validate
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -320,14 +279,8 @@ class CheckReferralCodeView(APIView):
                 "message": "Invalid referral code."
             })
 
-
+# Check Email Existence
 class CheckEmailView(APIView):
-    """
-    GET endpoint to check if an email is already registered.
-    
-    Query params:
-    - email: Email address to check
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -350,16 +303,8 @@ class CheckEmailView(APIView):
             "message": "Email is already registered." if exists else "Email is available."
         })
 
-
+# Fraud Detection
 class FraudDetectionView(APIView):
-    """
-    GET endpoint to detect potential fraud based on IP address or email patterns.
-    Admin only.
-    
-    Query params:
-    - ip: IP address to check
-    - email: Email to check for duplicates
-    """
     permission_classes = [IsAdminUser]
 
     def get(self, request):
