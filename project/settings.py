@@ -241,7 +241,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'tom@strenno.ai'
 EMAIL_HOST_PASSWORD = '24bL!2Vx'
-DEFAULT_FROM_EMAIL = 'tom@strenno.ai'
+DEFAULT_FROM_EMAIL = 'marketing@strenno.ai'
 
 
 # internal ips for debug toolbar settings
