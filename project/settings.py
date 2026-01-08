@@ -266,8 +266,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.hostinger.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'tom@strenno.ai'
-EMAIL_HOST_USER = 'marketing@strenno.ai'
+EMAIL_HOST_USER = 'tom@strenno.ai'
 EMAIL_HOST_PASSWORD = '24bL!2Vx'
 DEFAULT_FROM_EMAIL = 'marketing@strenno.ai'
 
