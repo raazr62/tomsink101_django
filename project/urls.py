@@ -1,8 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path, include
 from django.conf.urls.static import static
 from project import settings
-from django.views.static import serve
 
 
 urlpatterns = [
@@ -17,7 +16,7 @@ urlpatterns = [
     path("api/", include("apps.task.urls")),
     path("api/", include("apps.subscription.urls")),
     path("api/", include("apps.socialauth.urls")),
-    path("api/", include("apps.ai_plan.urls")),
+
 ]
 
 # Serve media files in both development and production

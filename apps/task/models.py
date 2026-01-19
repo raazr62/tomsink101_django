@@ -73,10 +73,12 @@ class Exercise(models.Model):
         related_name='exercises'
     )
     name = models.CharField(max_length=255)
+    date = models.DateField(null=True, blank=True)  # Date for this exercise
     sets = models.IntegerField(default=3)
     reps = models.CharField(max_length=50)  # Can be "10-12" or "30 seconds"
+    weight = models.CharField(max_length=50, blank=True, default='')  # Weight used (e.g., "10-15 kg" or empty for bodyweight)
     description = models.TextField(blank=True, null=True)  # Detailed explanation of the exercise
-    tips = models.JSONField(blank=True, null=True, default=list)  # Array of tips for the exercise
+    pro_tips = models.JSONField(blank=True, null=True, default=list)  # Array of pro tips for the exercise
     completed_sets = models.IntegerField(default=0)
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -182,6 +184,7 @@ class Meal(models.Model):
         on_delete=models.CASCADE,
         related_name='meals'
     )
+    date = models.DateField(null=True, blank=True)  # Date for this meal
     meal_type = models.CharField(max_length=20, choices=MEAL_TYPE_CHOICES)
     title = models.CharField(max_length=255)
     items = models.JSONField()  # List of food items
