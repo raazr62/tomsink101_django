@@ -125,3 +125,39 @@ class PricingSection(models.Model):
         if self.is_active:
             PricingSection.objects.filter(is_active=True).exclude(id=self.id).update(is_active=False)
         super().save(*args, **kwargs)
+
+# Pricing Section
+class PlanItem(models.Model):
+    BILLING_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly'),
+    ]
+
+    billing_cycle = models.CharField(max_length=20, choices=BILLING_CHOICES, default="monthly")
+    is_popular = models.BooleanField(default=False, help_text='Mark as "Most Popular" plan')
+    name = models.CharField(max_length=100)
+    title = models.CharField(max_length=100, null=True, blank=True)
+    price = models.DecimalField(max_digits=6, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.billing_cycle})"
+
+class Features(models.Model):
+    planitem = models.ForeignKey(PlanItem, on_delete=models.CASCADE, related_name="features", null=True, blank=True)
+    text = models.CharField(max_length=255, null=True, blank=True)
+    included = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.text or "Features Text"

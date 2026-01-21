@@ -1,4 +1,4 @@
-from .models import Package, Subscription, PackageFeature, PricingSection
+from .models import Features, Package, PlanItem, Subscription, PackageFeature, PricingSection
 import stripe
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -10,10 +10,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from .serializers import SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
+from .serializers import PlanItemSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
 import requests
 import json
 from base64 import b64encode
+from django.db.models import Prefetch
 
 # Create your views here.
 
@@ -649,4 +650,28 @@ class PackageDetailView(APIView):
                 'success': False,
                 'message': 'Failed to fetch package',
                 'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Pricing Section
+class NewPricingView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        try:
+            subscriptions = PlanItem.objects.filter(is_active=True).prefetch_related(Prefetch('features',queryset=Features.objects.order_by('order')))
+            serializer = PlanItemSerializer(subscriptions, many=True)
+            
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'Subscriptions fetched successfully',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'message': 'Failed to fetch subscriptions',
+                'data': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

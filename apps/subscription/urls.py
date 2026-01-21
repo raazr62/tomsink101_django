@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import NewPricingView
 
 urlpatterns = [
     # CMS API endpoints (public)
@@ -27,4 +28,6 @@ urlpatterns = [
     # Webhooks
     path('webhook/', views.stripe_webhook_view, name='stripe-webhook'),
     path('paypal-webhook/', views.paypal_webhook_view, name='paypal-webhook'),
+    
+    path('subscription/pricing/', NewPricingView.as_view(), name='user-subscriptions'),
 ]

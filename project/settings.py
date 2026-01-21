@@ -13,15 +13,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import datetime
 import os
 from pathlib import Path
-
-from django.templatetags.static import static
-from django.urls import reverse_lazy
+from project import unfold_config
 from django.utils.translation import gettext_lazy as _
 from decouple import config
 from dotenv import load_dotenv
 
 # Load environment variables from .env
 load_dotenv()
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -79,7 +78,7 @@ INSTALLED_APPS = [
     "apps.manageai",
     "apps.task",
     "apps.subscription",
-    "apps.ai_plan",
+    "apps.dashboard",
     # social auth app
     "apps.socialauth",
 ]
@@ -273,17 +272,12 @@ INTERNAL_IPS = [
 
 # unfold settings
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-from project import unfold_config
-
 UNFOLD = unfold_config.get_unfold_settings()
 
 
-from dotenv import load_dotenv
-import os
-
-load_dotenv()  # reads .env file
 
 
+# OpenAI Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
@@ -317,3 +311,14 @@ GOOGLE_OAUTH_CALLBACK_URL = os.getenv("GOOGLE_OAUTH_CALLBACK_URL")
 
 
 BACKEND_URL = os.getenv("BACKEND_URL")
+
+# Celery Configuration
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+

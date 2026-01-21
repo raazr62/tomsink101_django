@@ -6,7 +6,7 @@ from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, Workou
 class ExerciseInline(admin.TabularInline):
     model = Exercise
     extra = 0
-    fields = ('name', 'sets', 'reps', 'description', 'tips', 'completed_sets', 'status', 'order')
+    fields = ('name', 'sets', 'reps', 'description', 'pro_tips', 'completed_sets', 'status', 'order')
 
 
 class MealInline(admin.TabularInline):
@@ -20,7 +20,7 @@ class WorkoutPlanAdmin(ModelAdmin):
     list_display = ('name', 'user', 'status', 'progress_percentage', 'total_exercises', 'start_date', 'created_at')
     list_filter = ('status', 'start_date', 'created_at')
     search_fields = ('name', 'user__email', 'summary')
-    readonly_fields = ('id', 'progress_percentage', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'progress_percentage', 'start_date', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
     inlines = [ExerciseInline]
     
     fieldsets = (
@@ -38,7 +38,7 @@ class WorkoutPlanAdmin(ModelAdmin):
 
 @admin.register(Exercise)
 class ExerciseAdmin(ModelAdmin):
-    list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage')
+    list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage', 'date')
     list_filter = ('status', 'created_at')
     search_fields = ('name', 'description', 'workout_plan__name', 'workout_plan__user__email')
     readonly_fields = ('id', 'completion_percentage', 'created_at', 'updated_at')
@@ -67,8 +67,8 @@ class DietPlanAdmin(ModelAdmin):
 
 @admin.register(Meal)
 class MealAdmin(ModelAdmin):
-    list_display = ('title', 'meal_type', 'diet_plan', 'calories', 'protein', 'carbs', 'fats', 'status')
-    list_filter = ('meal_type', 'status', 'created_at')
+    list_display = ('title', 'meal_type', 'diet_plan', 'calories', 'protein', 'carbs', 'fats', 'status', 'date')
+    list_filter = ('meal_type', 'status', 'created_at', 'date')
     search_fields = ('title', 'diet_plan__name', 'diet_plan__user__email')
     readonly_fields = ('id', 'created_at', 'updated_at')
 
