@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Package, Subscription, PackageFeature, PricingSection
+from .models import Features, Package, PlanItem, Subscription, PackageFeature, PricingSection
 from unfold.admin import ModelAdmin, TabularInline
 
 
@@ -84,3 +84,15 @@ class SubscriptionAdmin(ModelAdmin):
             'fields': ('stripe_subscription_id', 'paypal_subscription_id'),
         }),
     )
+
+# Pricing
+class FeatureInline(TabularInline):
+    model = Features
+    extra = 1
+    fields = ('text', 'included', 'order')
+
+@admin.register(PlanItem)
+class FeaturesAdmin(ModelAdmin):
+    list_display = ('id', 'name', 'title', 'billing_cycle', 'price', 'is_active', 'is_popular')
+    search_fields = ('id', 'name', 'title', 'price')
+    inlines = [FeatureInline]

@@ -6,7 +6,7 @@ from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, Workou
 class ExerciseInline(admin.TabularInline):
     model = Exercise
     extra = 0
-    fields = ('name', 'sets', 'reps', 'description', 'tips', 'completed_sets', 'status', 'order')
+    fields = ('name', 'sets', 'reps', 'description', 'pro_tips', 'completed_sets', 'status', 'order')
 
 
 class MealInline(admin.TabularInline):
@@ -20,7 +20,7 @@ class WorkoutPlanAdmin(ModelAdmin):
     list_display = ('name', 'user', 'status', 'progress_percentage', 'total_exercises', 'start_date', 'created_at')
     list_filter = ('status', 'start_date', 'created_at')
     search_fields = ('name', 'user__email', 'summary')
-    readonly_fields = ('id', 'progress_percentage', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'progress_percentage', 'start_date', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
     inlines = [ExerciseInline]
     
     fieldsets = (

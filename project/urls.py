@@ -16,6 +16,7 @@ urlpatterns = [
     path("api/", include("apps.task.urls")),
     path("api/", include("apps.subscription.urls")),
     path("api/", include("apps.socialauth.urls")),
+    path("api/", include("apps.dashboard.urls")),
 
 ]
 
