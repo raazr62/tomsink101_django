@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    UserWorkoutStatsView,
     WelcomeView,
     FitnessDashboardView,
     WorkoutListCreateView,
@@ -7,15 +8,15 @@ from .views import (
     NutritionUpdateView,
     WeeklyStatsView,
     CoachInsightListView,
-    CoachInsightDetailView
+    CoachInsightDetailView,
+    NutritionPlanView
 )
 
 urlpatterns = [
     # Welcome endpoint
     path('dashboard/welcome/', WelcomeView.as_view(), name='welcome'),
-    
-
-
+    path('dashboard/workout-stats/', UserWorkoutStatsView.as_view(), name='workout-stats'),
+    path("dashboard/daily-nutrition-stats/", NutritionPlanView.as_view(), name="daily-nutrition-plan"),
 
 
 
