@@ -102,3 +102,10 @@ class DashboardSerializer(serializers.Serializer):
     today_nutrition = NutritionPlanSerializer()
     latest_coach_insight = CoachInsightSerializer(allow_null=True)
     motivational_quote = serializers.CharField()
+
+# Daily Nutrition Plan
+class NutritionPlanSerializer(serializers.Serializer):
+    protein = serializers.DictField()
+    calories = serializers.DictField()
+    carbs = serializers.DictField()
+    fats = serializers.DictField()

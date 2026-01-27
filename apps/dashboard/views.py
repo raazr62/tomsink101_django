@@ -9,11 +9,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight
+from django.db.models import Sum
 from .serializers import (
     DashboardSerializer, FitnessGoalSerializer, WorkoutSerializer,
     WeeklyStatsSerializer, NutritionPlanSerializer, CoachInsightSerializer
 )
-import random
+
+from apps.task.models import Meal, DietPlan
 
 # Welcome
 class WelcomeView(APIView):
@@ -95,26 +97,188 @@ class WelcomeView(APIView):
             "data": response_data,
             }, status=status.HTTP_200_OK)
 
-# # User Workout Stats
-# class UserWorkoutStatsView(APIView):
-#     permission_classes = [IsAuthenticated]
+# User Workout Stats
+class UserWorkoutStatsView(APIView):
+    permission_classes = [IsAuthenticated]
 
-#     def get(self, request):
+    def get(self, request):
+        user = request.user
+        today = timezone.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
 
+        # Workouts for the week
+        workouts = Workout.objects.filter(user=user, scheduled_date__range=(week_start, week_end))
+        workouts_target = workouts.count() or 5
+        workouts_completed = workouts.filter(is_completed=True).count()
 
+        # Workout percentage
+        workout_percentage = int((workouts_completed / workouts_target) * 100) if workouts_target else 0
 
+        # Aggregates
+        calories_burned_total = workouts.filter(is_completed=True).aggregate(total=Sum('calories_burned'))['total'] or 0
+        workout_minutes_total = workouts.filter(is_completed=True).aggregate(total=Sum('duration_minutes'))['total'] or 0
 
+        # Nutrition score: average of daily macro compliance (0-100)
+        nutrition_plans = NutritionPlan.objects.filter(user=user, date__range=(week_start, week_end)).order_by('date')
+        day_scores = []
+        for plan in nutrition_plans:
+            protein_ratio = min(plan.protein_g / plan.protein_target_g, 1) if plan.protein_target_g else 0
+            calories_ratio = min(plan.calories / plan.calories_target, 1) if plan.calories_target else 0
+            fat_ratio = min(plan.fat_g / plan.fat_target_g, 1) if plan.fat_target_g else 0
+            carbs_ratio = min(plan.carbs_g / plan.carbs_target_g, 1) if plan.carbs_target_g else 0
+            day_score = (protein_ratio + calories_ratio + fat_ratio + carbs_ratio) / 4
+            day_scores.append(day_score)
 
+        nutrition_percentage = int((sum(day_scores) / len(day_scores)) * 100) if day_scores else 0
 
+        # Overall streak: consecutive days up to today where user met either workout or nutrition threshold
+        streak = 0
+        for i in range(0, 365):  # limit search to last year
+            day = today - timedelta(days=i)
+            did_workout = Workout.objects.filter(user=user, scheduled_date=day, is_completed=True).exists()
+            day_plan = NutritionPlan.objects.filter(user=user, date=day).first()
+            day_score = 0
+            if day_plan:
+                p = min(day_plan.protein_g / day_plan.protein_target_g, 1) if day_plan.protein_target_g else 0
+                c = min(day_plan.calories / day_plan.calories_target, 1) if day_plan.calories_target else 0
+                f = min(day_plan.fat_g / day_plan.fat_target_g, 1) if day_plan.fat_target_g else 0
+                cb = min(day_plan.carbs_g / day_plan.carbs_target_g, 1) if day_plan.carbs_target_g else 0
+                day_score = (p + c + f + cb) / 4
 
+            successful_day = did_workout or (day_plan and day_score >= 0.8)
+            if successful_day:
+                streak += 1
+            else:
+                break
 
+        # Success rate: simple average of workout and nutrition percentages
+        success_rate = int((workout_percentage + nutrition_percentage) / 2)
 
+        # Persist weekly stats
+        stats, created = WeeklyStats.objects.get_or_create(
+            user=user,
+            week_start_date=week_start,
+            defaults={
+                'week_end_date': week_end
+            }
+        )
 
+        stats.workouts_completed = workouts_completed
+        stats.workouts_target = workouts_target
+        stats.nutrition_score = nutrition_percentage
+        stats.overall_streak = streak
+        stats.success_rate = success_rate
+        stats.calories_burned = calories_burned_total
+        stats.workout_minutes = workout_minutes_total
+        stats.save()
 
+        # Previous week bodyweight for comparison
+        previous_week_start = week_start - timedelta(days=7)
+        previous_week_stats = WeeklyStats.objects.filter(user=user, week_start_date=previous_week_start).first()
+        previous_bodyweight = previous_week_stats.bodyweight_kg if previous_week_stats and previous_week_stats.bodyweight_kg else None
 
+        response_data = {
+            "summaryCards": [
+                {"type": "workouts", "value": workout_percentage, "unit": "%"},
+                {"type": "nutrition", "value": nutrition_percentage, "unit": "%"},
+                {"type": "streak", "value": streak, "unit": "days"},
+                {"type": "success_rate", "value": success_rate, "unit": "%"}
+            ],
+            "weeklyStats": {
+                "caloriesBurned": {"current": stats.calories_burned, "target": stats.calories_target, "unit": "kcal"},
+                "bodyWeight": {"current": float(stats.bodyweight_kg) if stats.bodyweight_kg else None, "previous": float(previous_bodyweight) if previous_bodyweight else None, "unit": "kg"},
+                "workoutMinutes": {"current": stats.workout_minutes, "target": stats.workout_minutes_target, "unit": "min"},
+                "completedWorkouts": {"current": stats.workouts_completed, "target": stats.workouts_target, "unit": "workouts"}
+            }
+        }
 
+        return Response({
+            "status": 200,
+            "success": True,
+            "message": "User workout stats fetched successfully",
+            "data": response_data,
+            }, status=status.HTTP_200_OK)
 
+# Daily Nutrition Plan
+class NutritionPlanView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user = request.user
+        today = timezone.now().date()
+
+        # Active diet plan
+        diet_plan = DietPlan.objects.filter(
+            user=user,
+            status="active"
+        ).first()
+
+        if not diet_plan:
+            return Response({
+                "status": 404,
+                "success": False,
+                "message": "No active diet plan found",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Today meals (TARGET = all meals)
+        all_meals = Meal.objects.filter(
+            diet_plan=diet_plan,
+            date=today
+        ).exclude(date__isnull=True)
+
+        # Completed meals only (ACTUAL)
+        completed_meals = all_meals.filter(status="completed")
+
+        # Target intake (planned)
+        target = {
+            "protein": sum(m.protein for m in all_meals),
+            "calories": sum(m.calories for m in all_meals),
+            "carbs": sum(m.carbs for m in all_meals),
+            "fats": sum(m.fats for m in all_meals),
+        }
+
+        # Actual intake (completed)
+        actual = {
+            "protein": sum(m.protein for m in completed_meals),
+            "calories": sum(m.calories for m in completed_meals),
+            "carbs": sum(m.carbs for m in completed_meals),
+            "fats": sum(m.fats for m in completed_meals),
+        }
+
+        # Nutrition block builder
+        def build_nutrition(key, unit):
+            diff = actual[key] - target[key]
+            return {
+                "target": target[key],
+                "actual": actual[key],
+                "difference": diff,
+                "unit": unit,
+                "status": (
+                    "above" if diff > 0 else
+                    "below" if diff < 0 else
+                    "exact"
+                )
+            }
+
+        # Final response data
+        data = {
+            "date": today,
+            "nutrition": {
+                "protein": build_nutrition("protein", "g"),
+                "calories": build_nutrition("calories", "kcal"),
+                "carbs": build_nutrition("carbs", "g"),
+                "fats": build_nutrition("fats", "g"),
+            }
+        }
+
+        return Response({
+            "status": 200,
+            "success": True,
+            "message": "Daily nutrition plan fetched successfully",
+            "data": data
+        }, status=status.HTTP_200_OK)
 
 
 
