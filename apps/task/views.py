@@ -380,38 +380,50 @@ class WorkoutCalendarView(APIView):
         expected_exercises = active_workout.total_exercises if active_workout else 0
         expected_meals = active_diet.total_meals if active_diet else 4
         
-        # Build calendar data
+        # Build calendar data by checking scheduled exercises/meals for each date
         calendar_data = {}
         for day in range(1, last_day_num + 1):
             current_date = datetime(year, month, day).date()
             progress = progress_dict.get(current_date, None)
-            
-            if progress:
-                exercises_done = progress['exercises_completed']
-                meals_done = progress['meals_completed']
-                
-                # Determine status
-                if exercises_done >= expected_exercises and meals_done >= expected_meals:
+
+            # Count scheduled and completed exercises/meals for this specific date
+            if active_workout:
+                expected_exercises_day = active_workout.exercises.filter(date=current_date).count()
+                completed_exercises_day = active_workout.exercises.filter(date=current_date, status='completed').count()
+            else:
+                expected_exercises_day = 0
+                completed_exercises_day = 0
+
+            if active_diet:
+                expected_meals_day = active_diet.meals.filter(date=current_date).count()
+                completed_meals_day = active_diet.meals.filter(date=current_date, status='completed').count()
+            else:
+                expected_meals_day = 0
+                completed_meals_day = 0
+
+            # Prefer DailyProgress counts when present (for backward compatibility),
+            # otherwise use counts derived from scheduled items.
+            exercises_done = progress['exercises_completed'] if progress is not None else completed_exercises_day
+            meals_done = progress['meals_completed'] if progress is not None else completed_meals_day
+
+            # Determine status
+            if expected_exercises_day == 0 and expected_meals_day == 0:
+                # No scheduled items for this date -> rest
+                status_type = 'rest'
+            else:
+                if exercises_done >= expected_exercises_day and meals_done >= expected_meals_day:
                     status_type = 'complete'
                 elif exercises_done > 0 or meals_done > 0:
                     status_type = 'incomplete'
                 else:
-                    status_type = 'rest'
-            else:
-                # No recorded progress for this date. If user has an active workout or diet
-                # plan with expected items, mark as 'incomplete' so the calendar reflects
-                # pending work; otherwise mark as 'rest'.
-                if (active_workout and expected_exercises > 0) or (active_diet and expected_meals > 0):
                     status_type = 'incomplete'
-                else:
-                    status_type = 'rest'
-            
+
             # Use date as key in the dictionary
             calendar_data[current_date.isoformat()] = {
                 'day': day,
                 'status': status_type,
-                'exercises_completed': progress['exercises_completed'] if progress else 0,
-                'meals_completed': progress['meals_completed'] if progress else 0
+                'exercises_completed': exercises_done,
+                'meals_completed': meals_done
             }
         
         return Response({
