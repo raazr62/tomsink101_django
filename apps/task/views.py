@@ -442,19 +442,25 @@ class DailyWorkoutDetailView(APIView):
         except ValueError:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Get active workout and diet plans
+        # Get active workout and diet plans. If there is no active plan, try to find
+        # any plan that has items scheduled for the target date.
         active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
         active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
-        
+
+        if not active_workout:
+            active_workout = WorkoutPlan.objects.filter(user=request.user, exercises__date=target_date).distinct().first()
+        if not active_diet:
+            active_diet = DietPlan.objects.filter(user=request.user, meals__date=target_date).distinct().first()
+
         if not active_workout and not active_diet:
             return Response({
-                'error': 'No active workout or diet plan found'
+                'error': 'No active workout or diet plan found for the requested date'
             }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Get exercises with their completion status
+
+        # Get exercises with their completion status (only those scheduled for the date)
         exercises_data = []
         if active_workout:
-            exercises = active_workout.exercises.all().order_by('order')
+            exercises = active_workout.exercises.filter(date=target_date).order_by('order')
             for exercise in exercises:
                 exercises_data.append({
                     'id': str(exercise.id),
@@ -468,11 +474,11 @@ class DailyWorkoutDetailView(APIView):
                     'completion_percentage': exercise.completion_percentage,
                     'order': exercise.order
                 })
-        
-        # Get meals with their completion status
+
+        # Get meals with their completion status (only those scheduled for the date)
         meals_data = []
         if active_diet:
-            meals = active_diet.meals.all().order_by('order')
+            meals = active_diet.meals.filter(date=target_date).order_by('order')
             for meal in meals:
                 meals_data.append({
                     'id': str(meal.id),
@@ -486,19 +492,19 @@ class DailyWorkoutDetailView(APIView):
                     'status': meal.status,
                     'order': meal.order
                 })
-        
+
         # Get daily progress for this date
         daily_progress = DailyProgress.objects.filter(
             user=request.user,
             date=target_date
         ).first()
-        
-        # Calculate today's nutrition totals from completed meals
+
+        # Calculate today's nutrition totals from completed meals (use meal.date)
         if active_diet:
             completed_meals_today = Meal.objects.filter(
                 diet_plan=active_diet,
                 status='completed',
-                updated_at__date=target_date
+                date=target_date
             )
             nutrition_totals = completed_meals_today.aggregate(
                 calories=Sum('calories'),
