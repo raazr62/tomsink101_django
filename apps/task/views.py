@@ -462,7 +462,7 @@ class DailyWorkoutDetailView(APIView):
                     'sets': exercise.sets,
                     'reps': exercise.reps,
                     'description': exercise.description,
-                    'tips': exercise.tips or [],
+                    'tips': exercise.pro_tips or [],
                     'completed_sets': exercise.completed_sets,
                     'status': exercise.status,
                     'completion_percentage': exercise.completion_percentage,
