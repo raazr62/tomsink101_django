@@ -40,7 +40,7 @@ class WorkoutPlanAdmin(ModelAdmin):
 class ExerciseAdmin(ModelAdmin):
     list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage', 'date')
     list_filter = ('status', 'created_at')
-    search_fields = ('name', 'description', 'workout_plan__name', 'workout_plan__user__email')
+    search_fields = ('id', 'name', 'description', 'workout_plan__name', 'workout_plan__user__email')
     readonly_fields = ('id', 'completion_percentage', 'created_at', 'updated_at')
 
 
@@ -67,9 +67,9 @@ class DietPlanAdmin(ModelAdmin):
 
 @admin.register(Meal)
 class MealAdmin(ModelAdmin):
-    list_display = ('title', 'meal_type', 'diet_plan', 'calories', 'protein', 'carbs', 'fats', 'status', 'date')
+    list_display = ('title', 'meal_type', 'diet_plan', 'status', 'calories', 'protein', 'carbs', 'fats', 'status', 'date')
     list_filter = ('meal_type', 'status', 'created_at', 'date')
-    search_fields = ('title', 'diet_plan__name', 'diet_plan__user__email')
+    search_fields = ('id', 'title', 'diet_plan__name', 'diet_plan__user__email')
     readonly_fields = ('id', 'created_at', 'updated_at')
 
 
