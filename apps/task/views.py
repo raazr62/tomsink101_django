@@ -521,6 +521,22 @@ class DailyWorkoutDetailView(APIView):
         
         total_meals = len(meals_data)
         completed_meals = sum(1 for m in meals_data if m['status'] == 'completed')
+
+        # Compute target nutrition totals for the requested date (only meals scheduled for that date)
+        if active_diet:
+            target_meals_qs = Meal.objects.filter(diet_plan=active_diet, date=target_date)
+            target_nutrition_agg = target_meals_qs.aggregate(
+                calories=Sum('calories'),
+                protein=Sum('protein'),
+                carbs=Sum('carbs'),
+                fats=Sum('fats')
+            )
+            target_calories = target_nutrition_agg.get('calories') or 0
+            target_protein = target_nutrition_agg.get('protein') or 0
+            target_carbs = target_nutrition_agg.get('carbs') or 0
+            target_fats = target_nutrition_agg.get('fats') or 0
+        else:
+            target_calories = target_protein = target_carbs = target_fats = 0
         
         response_data = {
             'date': target_date.isoformat(),
@@ -545,10 +561,10 @@ class DailyWorkoutDetailView(APIView):
                     'fats': nutrition_totals.get('fats', 0) or 0
                 },
                 'target_nutrition': {
-                    'calories': active_diet.total_daily_calories if active_diet else 0,
-                    'protein': active_diet.total_daily_protein if active_diet else 0,
-                    'carbs': active_diet.total_daily_carbs if active_diet else 0,
-                    'fats': active_diet.total_daily_fats if active_diet else 0
+                    'calories': target_calories,
+                    'protein': target_protein,
+                    'carbs': target_carbs,
+                    'fats': target_fats
                 }
             },
             'daily_progress': DailyProgressSerializer(daily_progress).data if daily_progress else None
