@@ -398,13 +398,7 @@ class WorkoutCalendarView(APIView):
                 else:
                     status_type = 'rest'
             else:
-                # No recorded progress for this date. If user has an active workout or diet
-                # plan with expected items, mark as 'incomplete' so the calendar reflects
-                # pending work; otherwise mark as 'rest'.
-                if (active_workout and expected_exercises > 0) or (active_diet and expected_meals > 0):
-                    status_type = 'incomplete'
-                else:
-                    status_type = 'rest'
+                status_type = 'rest'
             
             # Use date as key in the dictionary
             calendar_data[current_date.isoformat()] = {
