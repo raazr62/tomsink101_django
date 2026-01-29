@@ -10,6 +10,7 @@ from calendar import monthrange
 from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
 from apps.manageai.models import ChatSession, ChatMessage
 from .serializers import (
+    ReplaceMealSerializer,
     WorkoutPlanSerializer,
     ExerciseSerializer,
     DietPlanSerializer,
@@ -202,6 +203,46 @@ class MealUpdateView(APIView):
             "message": "Invalid data",
             "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+class ReplaceMealView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, meal_id):
+        meal = get_object_or_404(Meal, id=meal_id, diet_plan__user=request.user)
+        serializer = ReplaceMealSerializer(meal, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "Meal replaced successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            "status": 400,
+            "success": False,
+            "message": "Invalid data",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, meal_id):
+        meal = get_object_or_404(Meal, id=meal_id, diet_plan__user=request.user)
+        serializer = ReplaceMealSerializer(meal, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "Meal updated successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            "status": 400,
+            "success": False,
+            "message": "Invalid data",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class DailyProgressView(APIView):
     """

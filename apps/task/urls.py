@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    ReplaceMealView,
     WorkoutPlanListView,
     WorkoutPlanDetailView,
     ExerciseUpdateView,
@@ -47,6 +48,9 @@ urlpatterns = [
     path('meals/<uuid:meal_id>/', MealUpdateView.as_view(), name='meal-update'),
     path('meals/<uuid:meal_id>/toggle/', MealToggleView.as_view(), name='meal-toggle'),
     
+    # Replace Meal
+    path('replace-meal/<uuid:meal_id>/', ReplaceMealView.as_view(), name='replace-meal'),
+
     # Daily Progress
     path('progress/', DailyProgressView.as_view(), name='daily-progress'),
     

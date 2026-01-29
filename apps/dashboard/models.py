@@ -160,8 +160,7 @@ class CoachInsight(models.Model):
     """AI-generated or manual coach insights"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='coach_insights')
     message = models.TextField()
-    insight_type = models.CharField(max_length=50, default='general', 
-                                   help_text="e.g., motivation, adjustment, warning")
+    insight_type = models.CharField(max_length=50, default='general', help_text="e.g., motivation, adjustment, warning")
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

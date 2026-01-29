@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
-
+from apps.users.helpers import get_cloudinary_url
 
 class ExerciseSerializer(serializers.ModelSerializer):
     """Serializer for Exercise model."""
@@ -119,3 +119,22 @@ class WorkoutReviewOptionsSerializer(serializers.Serializer):
     energy_level_options = serializers.ListField(child=serializers.DictField())
     body_feeling_options = serializers.ListField(child=serializers.DictField())
     satisfaction_options = serializers.ListField(child=serializers.DictField())
+
+# Replace Meal
+class ReplaceMealSerializer(serializers.Serializer):
+    photo = serializers.SerializerMethodField()
+    class Meta:
+        model = Meal
+        fields = [
+            'id',
+            'photo',
+            'title',
+            'protein',
+            'carbs',
+            'fats',
+            'calories',
+
+        ]
+
+    def get_photo(self, obj):
+        return get_cloudinary_url(obj.photo)
