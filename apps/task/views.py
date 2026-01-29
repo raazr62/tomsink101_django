@@ -416,7 +416,7 @@ class WorkoutCalendarView(APIView):
                 elif exercises_done > 0 or meals_done > 0:
                     status_type = 'incomplete'
                 else:
-                    status_type = 'incomplete'
+                    status_type = 'null'
 
             # Use date as key in the dictionary
             calendar_data[current_date.isoformat()] = {
