@@ -129,11 +129,11 @@ class ReplaceMealSerializer(serializers.ModelSerializer):
             'id',
             'photo',
             'title',
+            'calories',
             'protein',
             'carbs',
             'fats',
-            'calories',
-
+            
         ]
 
     def get_photo(self, obj):
