@@ -121,7 +121,7 @@ class WorkoutReviewOptionsSerializer(serializers.Serializer):
     satisfaction_options = serializers.ListField(child=serializers.DictField())
 
 # Replace Meal
-class ReplaceMealSerializer(serializers.Serializer):
+class ReplaceMealSerializer(serializers.ModelSerializer):
     photo = serializers.SerializerMethodField()
     class Meta:
         model = Meal
