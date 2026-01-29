@@ -409,14 +409,14 @@ class WorkoutCalendarView(APIView):
             # Determine status
             if expected_exercises_day == 0 and expected_meals_day == 0:
                 # No scheduled items for this date -> rest
-                status_type = 'rest'
+                status_type = 'null'
             else:
                 if exercises_done >= expected_exercises_day and meals_done >= expected_meals_day:
                     status_type = 'complete'
                 elif exercises_done > 0 or meals_done > 0:
                     status_type = 'incomplete'
                 else:
-                    status_type = 'null'
+                    status_type = 'incomplete'
 
             # Use date as key in the dictionary
             calendar_data[current_date.isoformat()] = {
