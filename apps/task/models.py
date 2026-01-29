@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 import uuid
+from cloudinary.models import CloudinaryField
 
 # Workout Plan
 class WorkoutPlan(models.Model):
@@ -63,7 +64,7 @@ class Exercise(models.Model):
     description = models.TextField(blank=True, null=True)  # Detailed explanation of the exercise
     pro_tips = models.JSONField(blank=True, null=True, default=list)  # Array of pro tips for the exercise
     completed_sets = models.IntegerField(default=0)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -160,11 +161,12 @@ class Meal(models.Model):
     meal_type = models.CharField(max_length=20, choices=MEAL_TYPE_CHOICES)
     title = models.CharField(max_length=255)
     items = models.JSONField()  # List of food items
+    photo = CloudinaryField('meal_photo', blank=True, null=True)
     calories = models.IntegerField(default=0)
     protein = models.IntegerField(default=0)
     carbs = models.IntegerField(default=0)
     fats = models.IntegerField(default=0)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

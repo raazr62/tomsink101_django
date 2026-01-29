@@ -280,6 +280,43 @@ class NutritionPlanView(APIView):
             "data": data
         }, status=status.HTTP_200_OK)
 
+# My Plan Stats
+class MyPlanStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        try:
+            today = timezone.now().date()
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+
+            completeted_exercise = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end), status='completed').count()
+            all_exercises = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end)).count()
+            weekly_percentage = completeted_exercise / all_exercises * 100 if all_exercises > 0 else 0
+
+            data = {
+                "weekly_progress": weekly_percentage,
+
+            }
+
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "My Plan stats fetched successfully",
+                "data": data
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "success": False,
+                "message": f"An error occurred: {str(e)}",
+                "data": None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 
