@@ -137,4 +137,6 @@ class ReplaceMealSerializer(serializers.ModelSerializer):
         ]
 
     def get_photo(self, obj):
-        return get_cloudinary_url(obj.photo)
+        if obj.photo:
+            return get_cloudinary_url(obj.photo)
+        return None
