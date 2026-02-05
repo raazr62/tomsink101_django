@@ -85,6 +85,7 @@ class PlanItemSerializer(serializers.ModelSerializer):
             'name',
             'title',
             'price',
+            'is_active',
             'billing_cycle',
             'features',
         ]

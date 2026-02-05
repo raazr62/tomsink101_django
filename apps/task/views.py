@@ -537,6 +537,7 @@ class DailyWorkoutDetailView(APIView):
                     'id': str(meal.id),
                     'meal_type': meal.meal_type,
                     'title': meal.title,
+                    'photo': meal.photo.url if meal.photo else None,
                     'items': meal.items,
                     'calories': meal.calories,
                     'protein': meal.protein,
