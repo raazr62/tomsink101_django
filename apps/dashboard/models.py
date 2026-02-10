@@ -63,9 +63,8 @@ class Workout(models.Model):
     def __str__(self):
         return f"{self.title} - Day {self.day}"
 
-
+# Weekly Fitness Stats
 class WeeklyStats(models.Model):
-    """Weekly fitness statistics"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='weekly_stats')
     week_start_date = models.DateField()
     week_end_date = models.DateField()
@@ -90,6 +89,7 @@ class WeeklyStats(models.Model):
     # Bodyweight
     bodyweight_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     bodyweight_target_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    bodyweight_initial = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     
     # Workout time
     workout_minutes = models.IntegerField(default=0)
