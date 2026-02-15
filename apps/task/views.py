@@ -386,13 +386,8 @@ class WeeklyStatsView(APIView):
             "data": response_data
         }, status=status.HTTP_200_OK)
 
-
+# WorkOut Calender
 class WorkoutCalendarView(APIView):
-    """
-    API View for getting calendar data for a specific month.
-    
-    GET: Get workout calendar with completion status for each day
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -435,26 +430,26 @@ class WorkoutCalendarView(APIView):
                 expected_exercises_day = 0
                 completed_exercises_day = 0
 
-            if active_diet:
-                expected_meals_day = active_diet.meals.filter(date=current_date).count()
-                completed_meals_day = active_diet.meals.filter(date=current_date, status='completed').count()
-            else:
-                expected_meals_day = 0
-                completed_meals_day = 0
+            # if active_diet:
+            #     expected_meals_day = active_diet.meals.filter(date=current_date).count()
+            #     completed_meals_day = active_diet.meals.filter(date=current_date, status='completed').count()
+            # else:
+            #     expected_meals_day = 0
+            #     completed_meals_day = 0
 
             # Prefer DailyProgress counts when present (for backward compatibility),
             # otherwise use counts derived from scheduled items.
             exercises_done = progress['exercises_completed'] if progress is not None else completed_exercises_day
-            meals_done = progress['meals_completed'] if progress is not None else completed_meals_day
+            meals_done = progress['meals_completed'] if progress is not None else 0
 
             # Determine status
-            if expected_exercises_day == 0 and expected_meals_day == 0:
+            if expected_exercises_day == 0:
                 # No scheduled items for this date -> rest
                 status_type = 'null'
             else:
-                if exercises_done >= expected_exercises_day and meals_done >= expected_meals_day:
+                if exercises_done >= expected_exercises_day:
                     status_type = 'complete'
-                elif exercises_done > 0 or meals_done > 0:
+                elif exercises_done > 0:
                     status_type = 'incomplete'
                 else:
                     status_type = 'incomplete'
@@ -537,6 +532,7 @@ class DailyWorkoutDetailView(APIView):
                     'id': str(meal.id),
                     'meal_type': meal.meal_type,
                     'title': meal.title,
+                    'photo': meal.photo.url if meal.photo else None,
                     'items': meal.items,
                     'calories': meal.calories,
                     'protein': meal.protein,

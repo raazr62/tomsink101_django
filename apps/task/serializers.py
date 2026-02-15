@@ -123,20 +123,19 @@ class WorkoutReviewOptionsSerializer(serializers.Serializer):
 # Replace Meal
 class ReplaceMealSerializer(serializers.ModelSerializer):
     photo = serializers.SerializerMethodField()
+
     class Meta:
         model = Meal
         fields = [
-            'id',
+            'id', 
             'photo',
-            'title',
-            'calories',
-            'protein',
-            'carbs',
-            'fats',
-            
+            'title', 
+            'calories', 
+            'protein', 
+            'carbs', 
+            'fats'
         ]
+        extra_kwargs = {'photo': {'required': False, 'allow_null': True}}
 
     def get_photo(self, obj):
-        if obj.photo:
-            return get_cloudinary_url(obj.photo)
-        return None
+        return get_cloudinary_url(obj.photo)
