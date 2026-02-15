@@ -15,6 +15,7 @@ from .serializers import (
     WeeklyStatsSerializer, NutritionPlanSerializer, CoachInsightSerializer
 )
 
+from apps.dashboard.utils.empty_nutrition import empty_nutrition
 from apps.task.models import Meal, DietPlan
 
 # Welcome
@@ -216,11 +217,14 @@ class NutritionPlanView(APIView):
 
         if not diet_plan:
             return Response({
-                "status": 404,
-                "success": False,
-                "message": "No active diet plan found",
-                "data": None
-            }, status=status.HTTP_404_NOT_FOUND)
+                "status": 200,
+                "success": True,
+                "message": "No active diet plan found.",
+                "data": {
+                    "date": today,
+                    "nutrition": empty_nutrition()
+                }
+            }, status=status.HTTP_200_OK)
 
         # Today meals (TARGET = all meals)
         all_meals = Meal.objects.filter(
