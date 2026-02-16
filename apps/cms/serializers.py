@@ -13,7 +13,7 @@ class FitnessGoalSerializer(serializers.ModelSerializer):
 
 
 class HeroSectionSerializer(serializers.ModelSerializer):
-    goals = FitnessGoalSerializer(many=True, read_only=True)
+    # goals = FitnessGoalSerializer(many=True, read_only=True)
     
     class Meta:
         model = HeroSection
