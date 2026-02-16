@@ -23,14 +23,15 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     final_price = serializers.SerializerMethodField()
     price_display = serializers.SerializerMethodField()
     interval_display = serializers.CharField(source='get_interval_display', read_only=True)
-    
+    is_active = serializers.SerializerMethodField()
+
     class Meta:
         model = Package
         fields = [
             'id', 'name', 'tagline', 'price', 'final_price', 'price_display',
             'interval', 'interval_display', 'description', 'features',
             'is_popular', 'display_order', 'border_color', 'button_color',
-            'button_text_color', 'discount', 'discount_price'
+            'button_text_color', 'discount', 'discount_price', 'is_active'
         ]
     
     def get_final_price(self, obj):
@@ -39,10 +40,17 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     def get_price_display(self, obj):
         price = self.get_final_price(obj)
         return f'${int(price)}' if price == int(price) else f'${price:.2f}'
+    
+    def get_is_active(self, obj):
+        return Subscription.objects.filter(
+            is_active=True,
+            package=obj
+        ).exists()
 
 
 class PricingSectionSerializer(serializers.ModelSerializer):
     packages = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
     
     class Meta:
         model = PricingSection
@@ -50,12 +58,18 @@ class PricingSectionSerializer(serializers.ModelSerializer):
             'id', 'title', 'subtitle', 'background_color', 'text_color',
             'popular_badge_text', 'popular_badge_color', 
             'free_plan_button_text', 'paid_plan_button_text',
-            'packages'
+            'packages', 'is_active'
         ]
     
     def get_packages(self, obj):
         packages = Package.objects.filter(is_active=True).prefetch_related('features')
         return PackageCMSSerializer(packages, many=True).data
+    
+    def get_is_active(self, obj):
+        return Subscription.objects.filter(
+            is_active=True,
+            package__is_active=True
+        ).exists()
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
