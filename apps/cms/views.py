@@ -88,22 +88,22 @@ class CompleteCMSDataView(APIView):
                 'success_stories': SuccessStoriesSectionSerializer(success_stories, context={'request': request}).data if success_stories else None,
                 'ai_coach_sections': AICoachSectionSerializer(ai_coach_sections, many=True, context={'request': request}).data,
                 'feature_sections': FeatureSectionSerializer(feature_sections, many=True, context={'request': request}).data,
-                'cta_section': CTASectionSerializer(cta_sections, context={'request': request}).data if cta_sections else None,
-                'footer_links': {
-                    'product': FooterLinkSerializer(footer_links_grouped['product'], many=True).data,
-                    'company': FooterLinkSerializer(footer_links_grouped['company'], many=True).data,
-                    'legal': FooterLinkSerializer(footer_links_grouped['legal'], many=True).data,
-                    'social': FooterLinkSerializer(footer_links_grouped['social'], many=True).data,
-                    'other': FooterLinkSerializer(footer_links_grouped['other'], many=True).data,
-                },
+                # 'cta_section': CTASectionSerializer(cta_sections, context={'request': request}).data if cta_sections else None,
+                # 'footer_links': {
+                #     'product': FooterLinkSerializer(footer_links_grouped['product'], many=True).data,
+                #     'company': FooterLinkSerializer(footer_links_grouped['company'], many=True).data,
+                #     'legal': FooterLinkSerializer(footer_links_grouped['legal'], many=True).data,
+                #     'social': FooterLinkSerializer(footer_links_grouped['social'], many=True).data,
+                #     'other': FooterLinkSerializer(footer_links_grouped['other'], many=True).data,
+                # },
                 'social_media_links': SocialMediaLinkSerializer(social_media_links, many=True).data,
-                'faqs': FAQSerializer(faqs, many=True).data,
-                'pages': {
-                    'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
-                    'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,
-                    'cookie_policy': PageSerializer(pages_grouped['cookie_policy']).data if pages_grouped['cookie_policy'] else None,
-                    'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
-                }
+                # 'faqs': FAQSerializer(faqs, many=True).data,
+                # 'pages': {
+                #     'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
+                #     'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,
+                #     'cookie_policy': PageSerializer(pages_grouped['cookie_policy']).data if pages_grouped['cookie_policy'] else None,
+                #     'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
+                # }
             }
             
             return Response({
