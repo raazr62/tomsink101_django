@@ -172,36 +172,45 @@ class DietPlanDetailView(APIView):
             "status": status.HTTP_204_NO_CONTENT,
             "message": "Diet plan deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
-
+# Meals Status Update
 class MealUpdateView(APIView):
-    """
-    API View for updating meal status.
-    
-    PATCH: Update meal completion status
-    """
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, meal_id):
-        meal = get_object_or_404(Meal, id=meal_id, diet_plan__user=request.user)
-        serializer = MealUpdateSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            if 'status' in serializer.validated_data:
-                meal.status = serializer.validated_data['status']
-            if 'notes' in serializer.validated_data:
-                meal.notes = serializer.validated_data['notes']
-            
-            meal.save()
+        try:
+            # 404 + ownership check
+            meal = get_object_or_404(
+                Meal,
+                id=meal_id,
+                diet_plan__user=request.user
+            )
+
+            # can't complete twice
+            if meal.status == "completed":
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "Meal is already completed",
+                    "data": MealSerializer(meal).data
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Update
+            meal.status = "completed"
+            meal.save(update_fields=["status"])
+
             response_serializer = MealSerializer(meal)
+
             return Response({
                 "status": status.HTTP_200_OK,
-                "message": "Meal updated successfully",
-                "data": response_serializer.data}, status=status.HTTP_200_OK)
-        
-        return Response({
-            "status": status.HTTP_400_BAD_REQUEST,
-            "message": "Invalid data",
-            "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                "message": "Meal marked as completed successfully",
+                "data": response_serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Something went wrong while updating the meal",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ReplaceMealView(APIView):
     permission_classes = [IsAuthenticated]
@@ -211,6 +220,9 @@ class ReplaceMealView(APIView):
         serializer = ReplaceMealSerializer(meal, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            meal.status = "completed"
+            meal.save(update_fields=["status"])
+
             return Response({
                 "status": 200,
                 "success": True,
@@ -230,6 +242,9 @@ class ReplaceMealView(APIView):
         serializer = ReplaceMealSerializer(meal, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            meal.status = "completed"
+            meal.save(update_fields=["status"])
+
             return Response({
                 "status": 200,
                 "success": True,
@@ -607,16 +622,26 @@ class DailyWorkoutDetailView(APIView):
                     'calories': nutrition_totals.get('calories', 0) or 0,
                     'protein': nutrition_totals.get('protein', 0) or 0,
                     'carbs': nutrition_totals.get('carbs', 0) or 0,
-                    'fats': nutrition_totals.get('fats', 0) or 0
+                    'fats': nutrition_totals.get('fats', 0) or 0,
+                    'total': (nutrition_totals.get('calories', 0) or 0) + (nutrition_totals.get('protein', 0) or 0) + (nutrition_totals.get('carbs', 0) or 0) + (nutrition_totals.get('fats', 0) or 0)
                 },
                 'target_nutrition': {
                     'calories': target_calories,
                     'protein': target_protein,
                     'carbs': target_carbs,
-                    'fats': target_fats
+                    'fats': target_fats,
+                    'total': target_calories + target_protein+ target_carbs + target_fats
                 }
             },
-            'daily_progress': DailyProgressSerializer(daily_progress).data if daily_progress else None
+
+            # calculate overall daily progress
+            'daily_progress': round((
+                ((nutrition_totals.get('calories', 0) or 0) + 
+                 (nutrition_totals.get('protein', 0) or 0) + 
+                 (nutrition_totals.get('carbs', 0) or 0) + 
+                 (nutrition_totals.get('fats', 0) or 0)) / 
+                (target_calories + target_protein + target_carbs + target_fats)
+            ) * 100, 1) if (target_calories + target_protein + target_carbs + target_fats) > 0 else 0
         }
         
         return Response({

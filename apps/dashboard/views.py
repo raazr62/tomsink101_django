@@ -16,7 +16,7 @@ from .serializers import (
 )
 
 from apps.dashboard.utils.empty_nutrition import empty_nutrition
-from apps.task.models import Meal, DietPlan
+from apps.task.models import Meal, DietPlan, Exercise
 
 # Welcome
 class WelcomeView(APIView):
@@ -109,45 +109,58 @@ class UserWorkoutStatsView(APIView):
         week_end = week_start + timedelta(days=6)
 
         # Workouts for the week
-        workouts = Workout.objects.filter(user=user, scheduled_date__range=(week_start, week_end))
+        workouts = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end))
         workouts_target = workouts.count() or 5
-        workouts_completed = workouts.filter(is_completed=True).count()
+        workouts_completed = workouts.filter(status="completed").count()
 
         # Workout percentage
-        workout_percentage = int((workouts_completed / workouts_target) * 100) if workouts_target else 0
+        workout_percentage = int((workouts_completed / workouts_target) * 100) if workouts_target > 0 else 0
 
-        # Aggregates
-        calories_burned_total = workouts.filter(is_completed=True).aggregate(total=Sum('calories_burned'))['total'] or 0
-        workout_minutes_total = workouts.filter(is_completed=True).aggregate(total=Sum('duration_minutes'))['total'] or 0
+        # Calculate calories burned target
+        calories_burned_target = workouts_target * 45  # Rough estimate: 40 calories per workout
+        workout_minutes_target = workouts_target * 7  # Rough estimate: 7 minutes per workout
 
-        # Nutrition score: average of daily macro compliance (0-100)
-        nutrition_plans = NutritionPlan.objects.filter(user=user, date__range=(week_start, week_end)).order_by('date')
-        day_scores = []
-        for plan in nutrition_plans:
-            protein_ratio = min(plan.protein_g / plan.protein_target_g, 1) if plan.protein_target_g else 0
-            calories_ratio = min(plan.calories / plan.calories_target, 1) if plan.calories_target else 0
-            fat_ratio = min(plan.fat_g / plan.fat_target_g, 1) if plan.fat_target_g else 0
-            carbs_ratio = min(plan.carbs_g / plan.carbs_target_g, 1) if plan.carbs_target_g else 0
-            day_score = (protein_ratio + calories_ratio + fat_ratio + carbs_ratio) / 4
-            day_scores.append(day_score)
+        # Calculate calories burned actual
+        calories_burned_total = workouts_completed * 200  # Rough estimate: 350 cal per exercise session
+        workout_minutes_total = workouts_completed * 45   # Rough estimate: 45 min per exercise session
 
-        nutrition_percentage = int((sum(day_scores) / len(day_scores)) * 100) if day_scores else 0
+        # Nutrition for the week
+        nutrition = Meal.objects.filter(diet_plan__user=user, date__range=(week_start, week_end)).order_by('date')
+        nutrition_target = nutrition.count()
+        nutrition_completed = nutrition.filter(status="completed").count()
 
-        # Overall streak: consecutive days up to today where user met either workout or nutrition threshold
+        # Nutrition percentage
+        nutrition_percentage = int((nutrition_completed / nutrition_target) * 100) if nutrition_target > 0 else 0
+
+        # Overall streak: consecutive days up to today where user completed both exercise and meal
         streak = 0
         for i in range(0, 365):  # limit search to last year
             day = today - timedelta(days=i)
-            did_workout = Workout.objects.filter(user=user, scheduled_date=day, is_completed=True).exists()
-            day_plan = NutritionPlan.objects.filter(user=user, date=day).first()
-            day_score = 0
-            if day_plan:
-                p = min(day_plan.protein_g / day_plan.protein_target_g, 1) if day_plan.protein_target_g else 0
-                c = min(day_plan.calories / day_plan.calories_target, 1) if day_plan.calories_target else 0
-                f = min(day_plan.fat_g / day_plan.fat_target_g, 1) if day_plan.fat_target_g else 0
-                cb = min(day_plan.carbs_g / day_plan.carbs_target_g, 1) if day_plan.carbs_target_g else 0
-                day_score = (p + c + f + cb) / 4
-
-            successful_day = did_workout or (day_plan and day_score >= 0.8)
+            
+            # Check if user has any scheduled exercises for this day
+            has_scheduled_exercise = Exercise.objects.filter(workout_plan__user=user, date=day).exists()
+            # Check if user has any scheduled meals for this day
+            has_scheduled_meal = Meal.objects.filter(diet_plan__user=user, date=day).exists()
+            
+            # If nothing scheduled for this day, skip it (don't break streak for rest days)
+            if not has_scheduled_exercise and not has_scheduled_meal:
+                continue
+            
+            # Check if user completed at least one exercise
+            did_workout = Exercise.objects.filter(workout_plan__user=user, date=day, status="completed").exists()
+            # Check if user completed at least one meal
+            did_meal = Meal.objects.filter(diet_plan__user=user, date=day, status="completed").exists()
+            
+            # Successful day: completed both exercise AND meal (if both are scheduled)
+            if has_scheduled_exercise and has_scheduled_meal:
+                successful_day = did_workout and did_meal
+            elif has_scheduled_exercise:
+                successful_day = did_workout
+            elif has_scheduled_meal:
+                successful_day = did_meal
+            else:
+                successful_day = False
+            
             if successful_day:
                 streak += 1
             else:
@@ -155,6 +168,10 @@ class UserWorkoutStatsView(APIView):
 
         # Success rate: simple average of workout and nutrition percentages
         success_rate = int((workout_percentage + nutrition_percentage) / 2)
+
+        # Calculate dynamic targets based on scheduled workouts
+        calories_target_calculated = workouts_target * 40  # 40 calories per workout
+        workout_minutes_target_calculated = workouts_target * 7  # 7 minutes per workout
 
         # Persist weekly stats
         stats, created = WeeklyStats.objects.get_or_create(
@@ -171,7 +188,9 @@ class UserWorkoutStatsView(APIView):
         stats.overall_streak = streak
         stats.success_rate = success_rate
         stats.calories_burned = calories_burned_total
+        stats.calories_target = workout_minutes_target
         stats.workout_minutes = workout_minutes_total
+        stats.workout_minutes_target = workout_minutes_target_calculated
         stats.save()
 
         # Previous week bodyweight for comparison
@@ -233,7 +252,11 @@ class NutritionPlanView(APIView):
         ).exclude(date__isnull=True)
 
         # Completed meals only (ACTUAL)
-        completed_meals = all_meals.filter(status="completed")
+        completed_meals = Meal.objects.filter(
+            diet_plan=diet_plan,
+            date=today,
+            status="completed"
+        )
 
         # Target intake (planned)
         target = {
