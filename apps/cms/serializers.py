@@ -18,8 +18,8 @@ class HeroSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = HeroSection
         fields = [
-            'id', 'heading', 'sub_heading', 'description', 
-            'background_image', 'status', 'order', 'goals'
+            'id', 'heading', 'description', 
+            'background_image'
         ]
 
 
@@ -47,8 +47,7 @@ class AICoachSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AICoachSection
         fields = [
-            'id', 'badge_text', 'heading', 'description', 
-            'button_text', 'button_link', 'preview_image',
+            'id', 'badge_text', 'heading', 'description', 'preview_image',
             'background_color', 'order', 'status'
         ]
 
@@ -57,9 +56,7 @@ class FeatureSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeatureSection
         fields = [
-            'id', 'section_name', 'heading', 'sub_heading', 
-            'description', 'image', 'button_text', 'button_link',
-            'background_color', 'order', 'status'
+            'id', 'heading', 'description', 'button_text', 'button_link'
         ]
 
 
@@ -84,7 +81,7 @@ class FooterLinkSerializer(serializers.ModelSerializer):
 class SocialMediaLinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = SocialMediaLink
-        fields = ['id', 'platform', 'url', 'icon', 'order', 'is_active']
+        fields = ['id', 'platform', 'url', 'order']
 
 
 class FAQSerializer(serializers.ModelSerializer):
