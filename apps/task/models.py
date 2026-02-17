@@ -71,7 +71,7 @@ class Exercise(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['order', 'created_at']
+        ordering = ['order', '-created_at']
         verbose_name = 'Exercise'
         verbose_name_plural = 'Exercises'
     
@@ -135,9 +135,8 @@ class DietPlan(models.Model):
     def total_daily_fats(self):
         return sum(meal.fats for meal in self.meals.all())
 
-
+# Meal
 class Meal(models.Model):
-    """Model to store individual meals within a diet plan."""
     MEAL_TYPE_CHOICES = [
         ('breakfast', 'Breakfast'),
         ('lunch', 'Lunch'),
@@ -152,11 +151,7 @@ class Meal(models.Model):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    diet_plan = models.ForeignKey(
-        DietPlan,
-        on_delete=models.CASCADE,
-        related_name='meals'
-    )
+    diet_plan = models.ForeignKey(DietPlan, on_delete=models.CASCADE, related_name='meals')
     date = models.DateField(null=True, blank=True)  # Date for this meal
     meal_type = models.CharField(max_length=20, choices=MEAL_TYPE_CHOICES)
     title = models.CharField(max_length=255)
@@ -173,7 +168,7 @@ class Meal(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['order', 'created_at']
+        ordering = ['order', '-created_at']
         verbose_name = 'Meal'
         verbose_name_plural = 'Meals'
     

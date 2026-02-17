@@ -8,13 +8,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight
+from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight, BodyWeightEntry
 from django.db.models import Sum
 from .serializers import (
     DashboardSerializer, FitnessGoalSerializer, WorkoutSerializer,
-    WeeklyStatsSerializer, NutritionPlanSerializer, CoachInsightSerializer
+    WeeklyStatsSerializer, NutritionPlanSerializer, CoachInsightSerializer,
+    BodyWeightPostSerializer, BodyWeightGetSerializer
 )
 
+from decimal import Decimal
 from apps.dashboard.utils.empty_nutrition import empty_nutrition
 from apps.task.models import Meal, DietPlan, Exercise
 
@@ -103,122 +105,120 @@ class UserWorkoutStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        today = timezone.now().date()
-        week_start = today - timedelta(days=today.weekday())
-        week_end = week_start + timedelta(days=6)
 
-        # Workouts for the week
-        workouts = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end))
-        workouts_target = workouts.count() or 5
-        workouts_completed = workouts.filter(status="completed").count()
+        try: 
+            user = request.user
+            today = timezone.now().date()
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
 
-        # Workout percentage
-        workout_percentage = int((workouts_completed / workouts_target) * 100) if workouts_target > 0 else 0
+            # 1. Workouts
+            workouts = Exercise.objects.filter(workout_plan__user=user)
+            workouts_target = workouts.count() or 5
+            workouts_completed = workouts.filter(status="completed").count()
 
-        # Calculate calories burned target
-        calories_burned_target = workouts_target * 45  # Rough estimate: 40 calories per workout
-        workout_minutes_target = workouts_target * 7  # Rough estimate: 7 minutes per workout
+            # Workout percentage
+            workout_percentage = int((workouts_completed / workouts_target) * 100) if workouts_target > 0 else 0
 
-        # Calculate calories burned actual
-        calories_burned_total = workouts_completed * 200  # Rough estimate: 350 cal per exercise session
-        workout_minutes_total = workouts_completed * 45   # Rough estimate: 45 min per exercise session
+            # 2. Nutritions
+            nutrition = Meal.objects.filter(diet_plan__user=user)
+            nutrition_target = nutrition.count()
+            nutrition_completed = nutrition.filter(status="completed").count()
 
-        # Nutrition for the week
-        nutrition = Meal.objects.filter(diet_plan__user=user, date__range=(week_start, week_end)).order_by('date')
-        nutrition_target = nutrition.count()
-        nutrition_completed = nutrition.filter(status="completed").count()
-
-        # Nutrition percentage
-        nutrition_percentage = int((nutrition_completed / nutrition_target) * 100) if nutrition_target > 0 else 0
-
-        # Overall streak: consecutive days up to today where user completed both exercise and meal
-        streak = 0
-        for i in range(0, 365):  # limit search to last year
-            day = today - timedelta(days=i)
+            # Nutrition percentage
+            nutrition_percentage = int((nutrition_completed / nutrition_target) * 100) if nutrition_target > 0 else 0
             
-            # Check if user has any scheduled exercises for this day
-            has_scheduled_exercise = Exercise.objects.filter(workout_plan__user=user, date=day).exists()
-            # Check if user has any scheduled meals for this day
-            has_scheduled_meal = Meal.objects.filter(diet_plan__user=user, date=day).exists()
-            
-            # If nothing scheduled for this day, skip it (don't break streak for rest days)
-            if not has_scheduled_exercise and not has_scheduled_meal:
-                continue
-            
-            # Check if user completed at least one exercise
-            did_workout = Exercise.objects.filter(workout_plan__user=user, date=day, status="completed").exists()
-            # Check if user completed at least one meal
-            did_meal = Meal.objects.filter(diet_plan__user=user, date=day, status="completed").exists()
-            
-            # Successful day: completed both exercise AND meal (if both are scheduled)
-            if has_scheduled_exercise and has_scheduled_meal:
-                successful_day = did_workout and did_meal
-            elif has_scheduled_exercise:
-                successful_day = did_workout
-            elif has_scheduled_meal:
-                successful_day = did_meal
-            else:
-                successful_day = False
-            
-            if successful_day:
-                streak += 1
-            else:
-                break
+            # 3. Overall streak
+            streak = 0
+            for i in range(0, 365):  # limit search to last year
+                day = today - timedelta(days=i)
+                
+                # Check if user has any scheduled exercises for this day
+                has_scheduled_exercise = Exercise.objects.filter(workout_plan__user=user, date=day).exists()
+                
+                # Check if user has any scheduled meals for this day
+                has_scheduled_meal = Meal.objects.filter(diet_plan__user=user, date=day).exists()
+                
+                # If nothing scheduled for this day, skip it (don't break streak for rest days)
+                if not has_scheduled_exercise and not has_scheduled_meal:
+                    continue
+                
+                # Check if user completed at least one exercise
+                did_workout = Exercise.objects.filter(workout_plan__user=user, date=day, status="completed").exists()
+                
+                # Check if user completed at least one meal
+                did_meal = Meal.objects.filter(diet_plan__user=user, date=day, status="completed").exists()
+                
+                # Successful day: completed both exercise AND meal (if both are scheduled)
+                if has_scheduled_exercise and has_scheduled_meal:
+                    successful_day = did_workout and did_meal
+                elif has_scheduled_exercise:
+                    successful_day = did_workout
+                elif has_scheduled_meal:
+                    successful_day = did_meal
+                else:
+                    successful_day = False
+                
+                if successful_day:
+                    streak += 1
+                else:
+                    break
 
-        # Success rate: simple average of workout and nutrition percentages
-        success_rate = int((workout_percentage + nutrition_percentage) / 2)
+            # 4. Success rate
+            success_rate = int((workout_percentage + nutrition_percentage) / 2)
 
-        # Calculate dynamic targets based on scheduled workouts
-        calories_target_calculated = workouts_target * 40  # 40 calories per workout
-        workout_minutes_target_calculated = workouts_target * 7  # 7 minutes per workout
+            # 5. Calories Burned
+            MET = Decimal(6)  # Metabolic Equivalent of Task
+            workout_duration = Decimal(0.125)  # Per workout duration in hours (7.5 minutes)
+            weight = BodyWeightEntry.objects.filter(user=user).order_by('-created_at').first()
+            print(f"User weight for calorie calculation: {weight.weight_kg if weight else 'No weight entry found'} kg")
+            
+            calories = int(MET * weight.weight_kg * workout_duration) if weight else 0 # calories formula = METs x weight (kg) x time (hours)
+            
+            weekly_workouts_target = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end)).count() or 5
+            weekly_workout_completed = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end), status="completed").count()
 
-        # Persist weekly stats
-        stats, created = WeeklyStats.objects.get_or_create(
-            user=user,
-            week_start_date=week_start,
-            defaults={
-                'week_end_date': week_end
+            calories_burned_target = weekly_workouts_target * calories  
+            calories_burned_actual = weekly_workout_completed * calories
+
+            # 6. Bodyweight comparison
+            bodyweight_entries = BodyWeightEntry.objects.filter(user=user).order_by('-created_at')[:2]
+            current_bodyweight = bodyweight_entries[0] if len(bodyweight_entries) > 0 else None
+            previous_bodyweight = bodyweight_entries[1] if len(bodyweight_entries) > 1 else current_bodyweight
+
+            # 7. Workout minutes
+            workout_minutes_target = weekly_workouts_target * workout_duration * 60  # Convert hours to minutes
+            workout_minutes_actual = weekly_workout_completed * workout_duration * 60
+
+            response_data = {
+                "summaryCards": [
+                    {"type": "workouts", "value": workout_percentage, "unit": "%"},
+                    {"type": "nutrition", "value": nutrition_percentage, "unit": "%"},
+                    {"type": "streak", "value": streak, "unit": "days"},
+                    {"type": "success_rate", "value": success_rate, "unit": "%"}
+                ],
+                "weeklyStats": {
+                    "caloriesBurned": {"current": calories_burned_actual, "target": calories_burned_target, "unit": "kcal"},
+                    "bodyWeight": {"current": float(current_bodyweight.weight_kg) if current_bodyweight else None, "previous": float(previous_bodyweight.weight_kg) if previous_bodyweight else None, "unit": "kg"},
+                    "workoutMinutes": {"current": workout_minutes_actual, "target": workout_minutes_target, "unit": "min"},
+                    "completedWorkouts": {"current": weekly_workout_completed, "target": weekly_workouts_target, "unit": "workouts"}
+                }
             }
-        )
 
-        stats.workouts_completed = workouts_completed
-        stats.workouts_target = workouts_target
-        stats.nutrition_score = nutrition_percentage
-        stats.overall_streak = streak
-        stats.success_rate = success_rate
-        stats.calories_burned = calories_burned_total
-        stats.calories_target = workout_minutes_target
-        stats.workout_minutes = workout_minutes_total
-        stats.workout_minutes_target = workout_minutes_target_calculated
-        stats.save()
-
-        # Previous week bodyweight for comparison
-        previous_week_start = week_start - timedelta(days=7)
-        previous_week_stats = WeeklyStats.objects.filter(user=user, week_start_date=previous_week_start).first()
-        previous_bodyweight = previous_week_stats.bodyweight_kg if previous_week_stats and previous_week_stats.bodyweight_kg else None
-
-        response_data = {
-            "summaryCards": [
-                {"type": "workouts", "value": workout_percentage, "unit": "%"},
-                {"type": "nutrition", "value": nutrition_percentage, "unit": "%"},
-                {"type": "streak", "value": streak, "unit": "days"},
-                {"type": "success_rate", "value": success_rate, "unit": "%"}
-            ],
-            "weeklyStats": {
-                "caloriesBurned": {"current": stats.calories_burned, "target": stats.calories_target, "unit": "kcal"},
-                "bodyWeight": {"current": float(stats.bodyweight_kg) if stats.bodyweight_kg else None, "previous": float(previous_bodyweight) if previous_bodyweight else None, "unit": "kg"},
-                "workoutMinutes": {"current": stats.workout_minutes, "target": stats.workout_minutes_target, "unit": "min"},
-                "completedWorkouts": {"current": stats.workouts_completed, "target": stats.workouts_target, "unit": "workouts"}
-            }
-        }
-
-        return Response({
-            "status": 200,
-            "success": True,
-            "message": "User workout stats fetched successfully",
-            "data": response_data,
-            }, status=status.HTTP_200_OK)
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "User workout stats fetched successfully",
+                "data": response_data,
+                }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "success": False,
+                "message": f"An error occurred: {str(e)}",
+                "data": None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Daily Nutrition Plan
 class NutritionPlanView(APIView):
@@ -343,6 +343,74 @@ class MyPlanStatsView(APIView):
                 "data": None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# BodyWeight
+class BodyWeightView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        
+        body_weight = BodyWeightEntry.objects.filter(user=request.user).all()
+        
+        if not body_weight:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "message": "No body weight entries found",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = BodyWeightGetSerializer(body_weight, many=True)
+        
+        return Response({
+            "status": status.HTTP_200_OK,
+            "success": True,
+            "message": "Body weight entries fetched successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        
+        # Check if user has a recent entry (within 15 days)
+        last_entry = BodyWeightEntry.objects.filter(user=request.user).first()
+        
+        if last_entry:
+            days_since_last = (timezone.now().date() - last_entry.created_at.date()).days
+            
+            if days_since_last < 15:
+                days_remaining = 15 - days_since_last
+                next_allowed_date = last_entry.created_at.date() + timedelta(days=15)
+                
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "success": False,
+                    "message": f"You can only post body weight once every 15 days. Please wait {days_remaining} more days.",
+                    "data": {
+                        "last_entry_date": last_entry.created_at.date().isoformat(),
+                        "days_since_last": days_since_last,
+                        "days_remaining": days_remaining,
+                        "next_allowed_date": next_allowed_date.isoformat()
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validation passed, create new entry
+        serializer = BodyWeightPostSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "success": True,
+                "message": "Body weight entry created successfully",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            "status": status.HTTP_400_BAD_REQUEST,
+            "success": False,
+            "message": "Invalid data",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -487,13 +555,10 @@ class FitnessDashboardView(APIView):
         # Get user name
         user_name = user.profile.name if hasattr(user, 'profile') and user.profile.name else user.email.split('@')[0]
         
-        # Get previous week bodyweight for comparison
-        previous_week_start = week_start - timedelta(days=7)
-        previous_week_stats = WeeklyStats.objects.filter(
-            user=user,
-            week_start_date=previous_week_start
-        ).first()
-        previous_bodyweight = previous_week_stats.bodyweight_kg if previous_week_stats and previous_week_stats.bodyweight_kg else None
+        # Get last two bodyweight entries for comparison
+        bodyweight_entries = BodyWeightEntry.objects.filter(user=user).order_by('-created_at')[:2]
+        current_bodyweight = bodyweight_entries[0] if len(bodyweight_entries) > 0 else None
+        previous_bodyweight = bodyweight_entries[1] if len(bodyweight_entries) > 1 else None
         
         # Build response in the requested structure
         response_data = {
@@ -540,8 +605,8 @@ class FitnessDashboardView(APIView):
                     "unit": "kcal"
                 },
                 "bodyWeight": {
-                    "current": float(current_week_stats.bodyweight_kg) if current_week_stats.bodyweight_kg else None,
-                    "previous": float(previous_bodyweight) if previous_bodyweight else None,
+                    "current": float(current_bodyweight.weight_kg) if current_bodyweight else None,
+                    "previous": float(previous_bodyweight.weight_kg) if previous_bodyweight else None,
                     "unit": "kg"
                 },
                 "workoutMinutes": {

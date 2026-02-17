@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight
+from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight, BodyWeightEntry
 from apps.users.models import Profile
+from datetime import timedelta
+from django.utils import timezone
 
 
 class FitnessGoalSerializer(serializers.ModelSerializer):
@@ -109,3 +111,29 @@ class NutritionPlanSerializer(serializers.Serializer):
     calories = serializers.DictField()
     carbs = serializers.DictField()
     fats = serializers.DictField()
+
+# BodyWeight Post
+class BodyWeightPostSerializer(serializers.ModelSerializer):
+    days_until_next = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = BodyWeightEntry
+        fields = ['id', 'weight_kg', 'days_until_next']
+    
+    def get_days_until_next(self, obj):
+        
+        next_allowed_date = obj.created_at + timedelta(days=15)
+        days_left = (next_allowed_date.date() - timezone.now().date()).days
+        return max(0, days_left)
+
+# BodyWeight Get
+class BodyWeightGetSerializer(serializers.ModelSerializer):
+    date = serializers.SerializerMethodField()
+    value = serializers.DecimalField(source='weight_kg', max_digits=5, decimal_places=2, read_only=True)
+    
+    class Meta:
+        model = BodyWeightEntry
+        fields = ['date', 'value']
+    
+    def get_date(self, obj):
+        return obj.created_at.strftime('%b %d').replace(' 0', ' ').strip()
