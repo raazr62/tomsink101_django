@@ -122,7 +122,7 @@ class WorkoutReviewOptionsSerializer(serializers.Serializer):
 
 # Replace Meal
 class ReplaceMealSerializer(serializers.ModelSerializer):
-    photo = serializers.SerializerMethodField()
+    photo = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Meal
