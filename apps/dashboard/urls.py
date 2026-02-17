@@ -1,8 +1,13 @@
 from django.urls import path
 from .views import (
-    MyPlanStatsView,
-    UserWorkoutStatsView,
     WelcomeView,
+    UserWorkoutStatsView,
+    NutritionPlanView,
+    MyPlanStatsView,
+    BodyWeightView,
+
+    
+    
     FitnessDashboardView,
     WorkoutListCreateView,
     WorkoutDetailView,
@@ -10,7 +15,7 @@ from .views import (
     WeeklyStatsView,
     CoachInsightListView,
     CoachInsightDetailView,
-    NutritionPlanView
+    
 )
 
 urlpatterns = [
@@ -19,6 +24,7 @@ urlpatterns = [
     path('dashboard/workout-stats/', UserWorkoutStatsView.as_view(), name='workout-stats'),
     path("dashboard/daily-nutrition-stats/", NutritionPlanView.as_view(), name="daily-nutrition-plan"),
     path("my-plan/stats/", MyPlanStatsView.as_view(), name="my-plan-stats"),
+    path("dashboard/bodyweight/", BodyWeightView.as_view(), name="bodyweight-entry"),
 
 
 
