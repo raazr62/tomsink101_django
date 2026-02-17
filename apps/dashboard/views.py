@@ -199,7 +199,7 @@ class UserWorkoutStatsView(APIView):
                 ],
                 "weeklyStats": {
                     "caloriesBurned": {"current": calories_burned_actual, "target": calories_burned_target, "unit": "kcal"},
-                    "bodyWeight": {"current": float(current_bodyweight.weight_kg) if current_bodyweight else None, "previous": float(previous_bodyweight.weight_kg) if previous_bodyweight else None, "unit": "kg"},
+                    "bodyWeight": {"current": float(current_bodyweight.weight_kg) if current_bodyweight else 0, "previous": float(previous_bodyweight.weight_kg) if previous_bodyweight else 0, "unit": "kg"},
                     "workoutMinutes": {"current": workout_minutes_actual, "target": workout_minutes_target, "unit": "min"},
                     "completedWorkouts": {"current": weekly_workout_completed, "target": weekly_workouts_target, "unit": "workouts"}
                 }
