@@ -347,3 +347,16 @@ class WebsiteContentManager(models.Model):
         if not self.pk and WebsiteContentManager.objects.exists():
             return WebsiteContentManager.objects.first()
         return super().save(*args, **kwargs)
+
+# Contact
+class ContactInfo(models.Model):
+    email = models.EmailField(blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return "Contact Information"
+
+    class Meta:
+        verbose_name = "Contact Information"
+        verbose_name_plural = "Contact Information"

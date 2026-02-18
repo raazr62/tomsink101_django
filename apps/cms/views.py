@@ -5,39 +5,19 @@ from rest_framework.permissions import AllowAny
 
 from apps.cms.models import (
     HeroSection, SuccessStoriesSection, AICoachSection, 
-    FeatureSection, CTASection, FooterLink, SocialMediaLink, FAQ, Page
+    FeatureSection, CTASection, FooterLink, SocialMediaLink, 
+    FAQ, Page, ContactInfo, 
 )
+
 from apps.cms.serializers import (
     HeroSectionSerializer, SuccessStoriesSectionSerializer,
     AICoachSectionSerializer, FeatureSectionSerializer,
     CTASectionSerializer, FooterLinkSerializer,
-    SocialMediaLinkSerializer, FAQSerializer, PageSerializer
+    SocialMediaLinkSerializer, FAQSerializer, PageSerializer, ContactSerializer
 )
 
-
+# CMS 
 class CompleteCMSDataView(APIView):
-    """
-    GET: Returns all CMS data in one response
-    
-    Returns:
-    {
-        "hero_sections": [...],
-        "success_stories": [...],
-        "ai_coach_sections": [...],
-        "feature_sections": [...],
-        "cta_sections": [...],
-        "footer_links": {
-            "product": [...],
-            "company": [...],
-            "legal": [...],
-            "social": [...],
-            "other": [...]
-        },
-        "social_media_links": [...],
-        "faqs": [...],
-        "pages": {...}
-    }
-    """
     permission_classes = [AllowAny]
     
     def get(self, request):
@@ -54,24 +34,28 @@ class CompleteCMSDataView(APIView):
             # Get feature sections
             feature_sections = FeatureSection.objects.filter(status=True).order_by('order')
             
-            # Get CTA sections
-            cta_sections = CTASection.objects.filter(status=True).first()
+            # # Get CTA sections
+            # cta_sections = CTASection.objects.filter(status=True).first()
             
-            # Get footer links organized by category
-            footer_links_all = FooterLink.objects.filter(is_active=True).order_by('category', 'order')
-            footer_links_grouped = {
-                'product': footer_links_all.filter(category='product'),
-                'company': footer_links_all.filter(category='company'),
-                'legal': footer_links_all.filter(category='legal'),
-                'social': footer_links_all.filter(category='social'),
-                'other': footer_links_all.filter(category='other'),
-            }
+            # # Get footer links organized by category
+            # footer_links_all = FooterLink.objects.filter(is_active=True).order_by('category', 'order')
+            # # footer_links_grouped = {
+            # #     'product': footer_links_all.filter(category='product'),
+            # #     'company': footer_links_all.filter(category='company'),
+            # #     'legal': footer_links_all.filter(category='legal'),
+            # #     'social': footer_links_all.filter(category='social'),
+            # #     'other': footer_links_all.filter(category='other'),
+            # # }
+
+            # FAQs
+            faqs = FAQ.objects.filter(status=True).order_by('order')
             
-            # Get social media links
+            # social media links
             social_media_links = SocialMediaLink.objects.filter(is_active=True).order_by('order')
             
-            # Get FAQs
-            faqs = FAQ.objects.filter(status=True).order_by('order')
+            # contact info
+            contact_info = ContactInfo.objects.first()
+            
             
             # Get pages organized by type
             pages_all = Page.objects.filter(status=True)
@@ -96,14 +80,15 @@ class CompleteCMSDataView(APIView):
                 #     'social': FooterLinkSerializer(footer_links_grouped['social'], many=True).data,
                 #     'other': FooterLinkSerializer(footer_links_grouped['other'], many=True).data,
                 # },
-                'social_media_links': SocialMediaLinkSerializer(social_media_links, many=True).data,
                 'faqs': FAQSerializer(faqs, many=True).data,
-                # 'pages': {
-                #     'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
-                #     'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,
-                #     'cookie_policy': PageSerializer(pages_grouped['cookie_policy']).data if pages_grouped['cookie_policy'] else None,
-                #     'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
-                # }
+                'social_media_links': SocialMediaLinkSerializer(social_media_links, many=True).data,
+                'contact_info': ContactSerializer(contact_info).data if contact_info else None,
+                'pages': {
+                    'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
+                    'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,
+                    'cookie_policy': PageSerializer(pages_grouped['cookie_policy']).data if pages_grouped['cookie_policy'] else None,
+                    'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
+                }
             }
             
             return Response({

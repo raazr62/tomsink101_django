@@ -2,7 +2,7 @@ from rest_framework import serializers
 from apps.cms.models import (
     Page, HeroSection, FitnessGoal, SuccessStoriesSection,
     Testimonial, AICoachSection, FeatureSection, CTASection,
-    FooterLink, SocialMediaLink, FAQ
+    FooterLink, SocialMediaLink, FAQ, ContactInfo, 
 )
 
 
@@ -118,3 +118,13 @@ class CompleteCMSSerializer(serializers.Serializer):
     social_media_links = SocialMediaLinkSerializer(many=True)
     faqs = FAQSerializer(many=True)
     pages = PageSerializer(many=True)
+
+# Contact
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactInfo
+        fields = [
+            'email', 
+            'phone_number', 
+            'address'
+        ]

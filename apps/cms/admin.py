@@ -2,7 +2,8 @@ from django.contrib import admin
 from apps.cms.models import (
     Page, HeroSection, FitnessGoal, SuccessStoriesSection, 
     Testimonial, AICoachSection, FeatureSection, CTASection,
-    FooterLink, SocialMediaLink, FAQ, WebsiteContentManager
+    FooterLink, SocialMediaLink, FAQ, WebsiteContentManager, 
+    ContactInfo
 )
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from django.utils.html import format_html
@@ -77,10 +78,6 @@ class PageInline(StackedInline):
 
 @admin.register(WebsiteContentManager)
 class WebsiteContentManagerAdmin(ModelAdmin):
-    """
-    🎯 CMS Dashboard - Quick access to all content sections
-    """
-    
     readonly_fields = ('last_updated', 'quick_links_display')
     
     fieldsets = (
@@ -166,9 +163,6 @@ class HeroSectionInlineForMaster(StackedInline):
 
 @admin.register(HeroSection)
 class HeroSectionAllInOneAdmin(ModelAdmin):
-    """
-    🎯 HERO SECTIONS - Edit with inline Fitness Goals
-    """
     list_display = ('id', 'heading_preview', 'goals_count', 'status', 'order', 'created_at')
     list_display_links = ('id', 'heading_preview')
     list_filter = ('status', 'created_at')
@@ -205,10 +199,6 @@ class HeroSectionAllInOneAdmin(ModelAdmin):
 
 @admin.register(SuccessStoriesSection)
 class SuccessStoriesSectionAllInOneAdmin(ModelAdmin):
-    """
-    ⭐ SUCCESS STORIES - ALL IN ONE
-    Manage success stories section with all testimonials in one place!
-    """
     list_display = ('id', 'heading', 'status', 'testimonial_count', 'created_at')
     list_display_links = ('id', 'heading')
     list_filter = ('status', 'created_at')
@@ -258,10 +248,6 @@ class PageAdmin(ModelAdmin):
 
 @admin.register(FitnessGoal)
 class FitnessGoalAdmin(ModelAdmin):
-    """
-    🏋️ FITNESS GOALS - Editable Table View
-    Edit multiple goals directly in the list!
-    """
     list_display = ('id', 'goal_text_preview', 'hero_section', 'icon_preview', 'order', 'is_active')
     list_display_links = ('id', 'goal_text_preview')
     list_filter = ('is_active', 'hero_section')
@@ -288,10 +274,6 @@ class FitnessGoalAdmin(ModelAdmin):
 
 @admin.register(Testimonial)
 class TestimonialAdmin(ModelAdmin):
-    """
-    💬 TESTIMONIALS - Editable Table View
-    Edit multiple testimonials directly in the list!
-    """
     list_display = ('id', 'user_name', 'rating', 'text_preview', 'section', 'date', 'order', 'is_active')
     list_display_links = ('id', 'user_name')
     list_filter = ('is_active', 'rating', 'section', 'date')
@@ -320,9 +302,6 @@ class TestimonialAdmin(ModelAdmin):
 
 @admin.register(AICoachSection)
 class AICoachSectionAdmin(ModelAdmin):
-    """
-    🤖 AI COACH SECTIONS - Editable Table View
-    """
     list_display = ('id', 'heading', 'badge_text', 'button_text', 'status', 'order', 'created_at')
     list_display_links = ('id', 'heading')
     list_filter = ('status', 'created_at')
@@ -395,10 +374,6 @@ class CTASectionAdmin(ModelAdmin):
 
 @admin.register(FooterLink)
 class FooterLinkAdmin(ModelAdmin):
-    """
-    🔗 FOOTER LINKS - Editable Table View
-    Edit links directly in the list by category!
-    """
     list_display = ('id', 'title', 'category', 'url', 'order', 'is_active', 'open_in_new_tab')
     list_display_links = ('id', 'title')
     list_filter = ('category', 'is_active', 'open_in_new_tab')
@@ -415,10 +390,6 @@ class FooterLinkAdmin(ModelAdmin):
 
 @admin.register(SocialMediaLink)
 class SocialMediaLinkAdmin(ModelAdmin):
-    """
-    📱 SOCIAL MEDIA - Editable Table View
-    Edit all social links directly!
-    """
     list_display = ('id', 'platform', 'url', 'icon', 'order', 'is_active')
     list_display_links = ('id', 'platform')
     list_filter = ('platform', 'is_active')
@@ -435,10 +406,6 @@ class SocialMediaLinkAdmin(ModelAdmin):
 
 @admin.register(FAQ)
 class FAQAdmin(ModelAdmin):
-    """
-    ❓ FAQs - Editable Table View
-    Edit questions and answers directly!
-    """
     list_display = ('id', 'question_preview', 'answer_preview', 'category', 'order', 'status')
     list_display_links = ('id', 'question_preview')
     list_filter = ('status', 'category', 'created_at')
@@ -462,3 +429,16 @@ class FAQAdmin(ModelAdmin):
     def answer_preview(self, obj):
         return obj.answer[:100] + '...' if len(obj.answer) > 100 else obj.answer
     answer_preview.short_description = 'Answer'
+
+# ContactInfo
+@admin.register(ContactInfo)
+class ContactInfoAdmin(ModelAdmin):
+    list_display = ('id', 'email', 'phone_number', 'address')
+    list_display_links = ('id', 'email')
+    search_fields = ('email', 'phone_number', 'address')
+    
+    fieldsets = (
+        ('Contact Information', {
+            'fields': ('email', 'phone_number', 'address')
+        }),
+    )
