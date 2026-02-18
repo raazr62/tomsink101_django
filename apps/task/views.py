@@ -225,18 +225,18 @@ class ReplaceMealView(APIView):
         serializer = ReplaceMealSerializer(meal, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            meal.status = "completed"
+            meal.status = "replaced"
             meal.save(update_fields=["status"])
 
             return Response({
-                "status": 200,
+                "status": status.HTTP_200_OK,
                 "success": True,
                 "message": "Meal replaced successfully",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         
         return Response({
-            "status": 400,
+            "status": status.HTTP_400_BAD_REQUEST,
             "success": False,
             "message": "Invalid data",
             "errors": serializer.errors
@@ -247,18 +247,18 @@ class ReplaceMealView(APIView):
         serializer = ReplaceMealSerializer(meal, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            meal.status = "completed"
+            meal.status = "replaced"
             meal.save(update_fields=["status"])
 
             return Response({
-                "status": 200,
+                "status": status.HTTP_200_OK,
                 "success": True,
-                "message": "Meal updated successfully",
+                "message": "Meal replaced successfully",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         
         return Response({
-            "status": 400,
+            "status": status.HTTP_400_BAD_REQUEST,
             "success": False,
             "message": "Invalid data",
             "errors": serializer.errors
@@ -517,13 +517,8 @@ class WorkoutCalendarView(APIView):
             }
         }, status=status.HTTP_200_OK)
 
-
+# Daily Workout 
 class DailyWorkoutDetailView(APIView):
-    """
-    API View for getting detailed workout information for a specific date.
-    
-    GET: Get exercises and meals for a specific date with completion status
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, date):
@@ -595,7 +590,7 @@ class DailyWorkoutDetailView(APIView):
         if active_diet:
             completed_meals_today = Meal.objects.filter(
                 diet_plan=active_diet,
-                status='completed',
+                status__in=['completed', 'replaced'],
                 date=target_date
             )
             nutrition_totals = completed_meals_today.aggregate(
@@ -612,7 +607,7 @@ class DailyWorkoutDetailView(APIView):
         completed_exercises = sum(1 for e in exercises_data if e['status'] == 'completed')
         
         total_meals = len(meals_data)
-        completed_meals = sum(1 for m in meals_data if m['status'] == 'completed')
+        completed_meals = sum(1 for m in meals_data if m['status'] in ['completed', 'replaced'])
 
         # Compute target nutrition totals for the requested date (only meals scheduled for that date)
         if active_diet:

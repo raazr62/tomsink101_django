@@ -147,6 +147,7 @@ class Meal(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('completed', 'Completed'),
+        ('replaced', 'Replaced'),
         ('skipped', 'Skipped'),
     ]
     
