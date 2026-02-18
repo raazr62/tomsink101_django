@@ -1,3 +1,4 @@
+from datetime import timezone
 from rest_framework import serializers
 from .models import Package, Subscription, PackageFeature, PricingSection
 from django.contrib.auth.models import User
@@ -103,3 +104,40 @@ class PlanItemSerializer(serializers.ModelSerializer):
             'billing_cycle',
             'features',
         ]
+
+# Subscription Header
+class SubscriptionHeaderSerializer(serializers.ModelSerializer):
+    active_plans = serializers.SerializerMethodField()
+    start_date = serializers.DateTimeField(format="%b-%d, %Y", read_only=True)
+    remaining = serializers.SerializerMethodField()
+    end_date = serializers.DateTimeField(format="%b-%d, %Y", read_only=True)
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Subscription
+        fields = [
+            'id',
+            'active_plans',
+            'start_date',
+            'remaining',
+            'end_date',
+            'status',
+        ]
+
+    def get_active_plans(self, obj):
+        active_plans = Subscription.objects.filter(user=obj.user, is_active=True).select_related('package')
+        return PackageSerializer(active_plans, many=True).data
+
+    def get_remaining(self, obj):
+        if obj.end_date:
+            remaining_time = obj.end_date - timezone.now()
+            return remaining_time.days
+        return None
+
+    def get_status(self, obj):
+        if obj.is_active:
+            return 'active'
+        elif obj.end_date and obj.end_date < timezone.now():
+            return 'expired'
+        else:
+            return 'inactive'

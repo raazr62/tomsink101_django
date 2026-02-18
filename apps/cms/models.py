@@ -268,9 +268,8 @@ class FooterLink(models.Model):
         verbose_name_plural = "Footer Links"
         ordering = ['category', 'order']
 
-
+# Social Media Links
 class SocialMediaLink(models.Model):
-    """Social media links for footer"""
     PLATFORM_CHOICES = [
         ('instagram', 'Instagram'),
         ('facebook', 'Facebook'),
@@ -302,7 +301,7 @@ class SocialMediaLink(models.Model):
         verbose_name_plural = "Social Media Links"
         ordering = ['order']
 
-
+# FAQs
 class FAQ(models.Model):
     question = models.CharField(max_length=255)
     answer = models.TextField()
@@ -360,3 +359,53 @@ class ContactInfo(models.Model):
     class Meta:
         verbose_name = "Contact Information"
         verbose_name_plural = "Contact Information"
+
+# Privacy & Terms
+class LegalDocument(models.Model):
+    DOC_TYPE_CHOICES = [
+        ('privacy', 'Privacy Policy'),
+        ('terms', 'Terms and Conditions'),
+    ]
+    type = models.CharField(max_length=50, choices=DOC_TYPE_CHOICES, unique=True)
+    version = models.CharField(max_length=20, default="1.0")
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.get_type_display()} (v{self.version})"
+    
+    def increment_version(self, major=False):
+        try:
+            parts = self.version.split('.')
+            if major:
+                # Increment major version and reset minor
+                parts[0] = str(int(parts[0]) + 1)
+                if len(parts) > 1:
+                    parts[1] = '0'
+            else:
+                # Increment minor version
+                if len(parts) == 1:
+                    parts.append('1')
+                else:
+                    parts[1] = str(int(parts[1]) + 1)
+            self.version = '.'.join(parts)
+        except (ValueError, IndexError):
+            # If version format is invalid, reset to 1.0
+            self.version = "1.0"
+    
+    def save(self, *args, **kwargs):
+        # Auto-increment version if content changed (and not a new instance)
+        if self.pk:
+            try:
+                old_instance = LegalDocument.objects.get(pk=self.pk)
+                if old_instance.content != self.content:
+                    # Content changed, increment minor version
+                    self.increment_version(major=False)
+            except LegalDocument.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
+    
+    class Meta:
+        verbose_name = "Legal Document"
+        verbose_name_plural = "Legal Documents"

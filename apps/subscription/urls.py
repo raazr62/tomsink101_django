@@ -30,4 +30,7 @@ urlpatterns = [
     path('paypal-webhook/', views.paypal_webhook_view, name='paypal-webhook'),
     
     path('subscription/pricing/', NewPricingView.as_view(), name='user-subscriptions'),
+
+    # Subscription header
+    path('subscription/header/', views.SubscriptionHeaderView.as_view(), name='subscription-header'),
 ]

@@ -222,6 +222,14 @@ class ReplaceMealView(APIView):
 
     def put(self, request, meal_id):
         meal = get_object_or_404(Meal, id=meal_id, diet_plan__user=request.user)
+        if meal.status in ["completed", "replaced"]:
+            return Response({
+                "status": status.HTTP_400_BAD_REQUEST,
+                "success": False,
+                "message": "Cannot replace a meal that is already completed or replaced",
+                "data": MealSerializer(meal).data
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = ReplaceMealSerializer(meal, data=request.data)
         if serializer.is_valid():
             serializer.save()

@@ -1,19 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from apps.cms.models import (
-    HeroSection, SuccessStoriesSection, AICoachSection, 
+    HeroSection, LegalDocument, SuccessStoriesSection, AICoachSection, 
     FeatureSection, CTASection, FooterLink, SocialMediaLink, 
     FAQ, Page, ContactInfo, 
 )
 
 from apps.cms.serializers import (
-    HeroSectionSerializer, SuccessStoriesSectionSerializer,
+    HeroSectionSerializer, LegalDocumentSerializer, SuccessStoriesSectionSerializer,
     AICoachSectionSerializer, FeatureSectionSerializer,
     CTASectionSerializer, FooterLinkSerializer,
-    SocialMediaLinkSerializer, FAQSerializer, PageSerializer, ContactSerializer
+    SocialMediaLinkSerializer, FAQSerializer, PageSerializer, 
+    ContactSerializer, HelpSupportSerializer, 
 )
 
 # CMS 
@@ -57,14 +58,14 @@ class CompleteCMSDataView(APIView):
             contact_info = ContactInfo.objects.first()
             
             
-            # Get pages organized by type
-            pages_all = Page.objects.filter(status=True)
-            pages_grouped = {
-                'privacy_policy': pages_all.filter(type='privacy_policy').first(),
-                'terms_and_conditions': pages_all.filter(type='terms_and_conditions').first(),
-                'cookie_policy': pages_all.filter(type='cookie_policy').first(),
-                'imprint': pages_all.filter(type='imprint').first(),
-            }
+            # # Get pages organized by type
+            # pages_all = Page.objects.filter(status=True)
+            # pages_grouped = {
+            #     'privacy_policy': pages_all.filter(type='privacy_policy').first(),
+            #     'terms_and_conditions': pages_all.filter(type='terms_and_conditions').first(),
+            #     'cookie_policy': pages_all.filter(type='cookie_policy').first(),
+            #     'imprint': pages_all.filter(type='imprint').first(),
+            # }
             
             # Serialize data
             data = {
@@ -83,12 +84,12 @@ class CompleteCMSDataView(APIView):
                 'faqs': FAQSerializer(faqs, many=True).data,
                 'social_media_links': SocialMediaLinkSerializer(social_media_links, many=True).data,
                 'contact_info': ContactSerializer(contact_info).data if contact_info else None,
-                'pages': {
-                    'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
-                    'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,
-                    'cookie_policy': PageSerializer(pages_grouped['cookie_policy']).data if pages_grouped['cookie_policy'] else None,
-                    'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
-                }
+                # 'pages': {
+                #     'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
+                #     'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,
+                #     'cookie_policy': PageSerializer(pages_grouped['cookie_policy']).data if pages_grouped['cookie_policy'] else None,
+                #     'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
+                # }
             }
             
             return Response({
@@ -106,3 +107,46 @@ class CompleteCMSDataView(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
+# Help & Support
+class HelpSupportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        contact_info = ContactInfo.objects.first()
+        if contact_info:
+            serializer = HelpSupportSerializer(contact_info)
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "Contact information retrieved successfully",
+                "data": serializer.data
+            })
+        else:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "message": "Contact information not found",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+# Privacy & Terms
+class LegalDocumentView(APIView):
+    permission_classes = []
+
+    def get(self, request, doc_type):
+        document = LegalDocument.objects.filter(type=doc_type).first()
+        if document:
+            serializer = LegalDocumentSerializer(document)
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": f"{doc_type.replace('_', ' ').title()} retrieved successfully",
+                "data": serializer.data
+            })
+        else:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "message": f"{doc_type.replace('_', ' ').title()} not found",
+                "data": None
+            }, status=status.HTTP_404_NOT_FOUND)

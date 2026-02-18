@@ -20,6 +20,8 @@ urlpatterns = [
 
 ]
 
+print("urlpatterns in project/urls.py:", urlpatterns)
+
 # Serve media files in both development and production
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from apps.cms.models import (
-    Page, HeroSection, FitnessGoal, SuccessStoriesSection, 
+    LegalDocument, Page, HeroSection, FitnessGoal, SuccessStoriesSection, 
     Testimonial, AICoachSection, FeatureSection, CTASection,
     FooterLink, SocialMediaLink, FAQ, WebsiteContentManager, 
     ContactInfo
@@ -440,5 +440,19 @@ class ContactInfoAdmin(ModelAdmin):
     fieldsets = (
         ('Contact Information', {
             'fields': ('email', 'phone_number', 'address')
+        }),
+    )
+
+# Privacy & Terms
+@admin.register(LegalDocument)
+class LegalDocumentAdmin(ModelAdmin):
+    list_display = ('id', 'type', 'version', 'updated_at')
+    list_display_links = ('id', 'type')
+    list_filter = ('type', 'updated_at')
+    search_fields = ('type', 'content')
+    
+    fieldsets = (
+        ('Legal Document', {
+            'fields': ('type', 'version', 'content')
         }),
     )
