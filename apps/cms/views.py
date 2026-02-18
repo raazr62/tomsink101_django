@@ -97,7 +97,7 @@ class CompleteCMSDataView(APIView):
                 #     'other': FooterLinkSerializer(footer_links_grouped['other'], many=True).data,
                 # },
                 'social_media_links': SocialMediaLinkSerializer(social_media_links, many=True).data,
-                # 'faqs': FAQSerializer(faqs, many=True).data,
+                'faqs': FAQSerializer(faqs, many=True).data,
                 # 'pages': {
                 #     'privacy_policy': PageSerializer(pages_grouped['privacy_policy']).data if pages_grouped['privacy_policy'] else None,
                 #     'terms_and_conditions': PageSerializer(pages_grouped['terms_and_conditions']).data if pages_grouped['terms_and_conditions'] else None,

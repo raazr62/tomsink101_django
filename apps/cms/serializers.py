@@ -27,8 +27,14 @@ class TestimonialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Testimonial
         fields = [
-            'id', 'user_name', 'user_avatar', 'rating', 
-            'testimonial_text', 'date', 'order', 'is_active'
+            'id', 
+            'user_name', 
+            'user_avatar', 
+            'rating', 
+            'testimonial_text', 
+            'date', 
+            'order', 
+            'is_active'
         ]
 
 

@@ -106,26 +106,16 @@ class SuccessStoriesSection(models.Model):
         verbose_name = "Success Stories Section"
         verbose_name_plural = "Success Stories Sections"
 
-
+# Success Stories
 class Testimonial(models.Model):
-    """Individual success stories/testimonials"""
     section = models.ForeignKey(
         SuccessStoriesSection, 
         on_delete=models.CASCADE, 
         related_name='testimonials'
     )
     user_name = models.CharField(max_length=100)
-    user_avatar = models.ImageField(
-        upload_to='cms/testimonials/', 
-        blank=True, 
-        null=True
-    )
-    rating = models.DecimalField(
-        max_digits=2, 
-        decimal_places=1,
-        validators=[MinValueValidator(0.0), MaxValueValidator(5.0)],
-        default=5.0
-    )
+    user_avatar = models.ImageField(upload_to='cms/testimonials/', blank=True, null=True)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, validators=[MinValueValidator(0.0), MaxValueValidator(5.0)], default=5.0)
     testimonial_text = models.TextField()
     date = models.DateField(auto_now_add=True)
     order = models.IntegerField(default=0)
@@ -333,7 +323,7 @@ class FAQ(models.Model):
     class Meta:
         verbose_name = "FAQ"
         verbose_name_plural = "FAQs"
-        ordering = ['order']
+        ordering = ['-order']
 
 
 class WebsiteContentManager(models.Model):
