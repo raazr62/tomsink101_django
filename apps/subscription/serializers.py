@@ -1,4 +1,4 @@
-from datetime import timezone
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Package, Subscription, PackageFeature, PricingSection
 from django.contrib.auth.models import User
@@ -126,7 +126,7 @@ class SubscriptionHeaderSerializer(serializers.ModelSerializer):
 
     def get_active_plans(self, obj):
         active_plans = Subscription.objects.filter(user=obj.user, is_active=True).select_related('package')
-        return PackageSerializer(active_plans, many=True).data
+        return [subscription.package.name for subscription in active_plans]
 
     def get_remaining(self, obj):
         if obj.end_date:
