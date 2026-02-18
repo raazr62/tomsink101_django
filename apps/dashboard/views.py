@@ -370,20 +370,20 @@ class BodyWeightView(APIView):
 
     def post(self, request):
         
-        # Check if user has a recent entry (within 15 days)
+        # Check if user has a recent entry (within 7 days)
         last_entry = BodyWeightEntry.objects.filter(user=request.user).first()
         
         if last_entry:
             days_since_last = (timezone.now().date() - last_entry.created_at.date()).days
             
-            if days_since_last < 15:
-                days_remaining = 15 - days_since_last
-                next_allowed_date = last_entry.created_at.date() + timedelta(days=15)
+            if days_since_last < 7:
+                days_remaining = 7 - days_since_last
+                next_allowed_date = last_entry.created_at.date() + timedelta(days=7)
                 
                 return Response({
                     "status": status.HTTP_400_BAD_REQUEST,
                     "success": False,
-                    "message": f"You can only post body weight once every 15 days. Please wait {days_remaining} more days.",
+                    "message": f"You can only post body weight once every 7 days. Please wait {days_remaining} more days.",
                     "data": {
                         "last_entry_date": last_entry.created_at.date().isoformat(),
                         "days_since_last": days_since_last,

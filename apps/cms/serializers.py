@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.cms.models import (
-    Page, HeroSection, FitnessGoal, SuccessStoriesSection,
+    LegalDocument, Page, HeroSection, FitnessGoal, SuccessStoriesSection,
     Testimonial, AICoachSection, FeatureSection, CTASection,
     FooterLink, SocialMediaLink, FAQ, ContactInfo, 
 )
@@ -127,4 +127,26 @@ class ContactSerializer(serializers.ModelSerializer):
             'email', 
             'phone_number', 
             'address'
+        ]
+
+# Help & Support
+class HelpSupportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactInfo
+        fields = [
+            'email', 
+            'phone_number', 
+        ]
+
+# Privacy & Terms
+class LegalDocumentSerializer(serializers.ModelSerializer):    
+    updated_at = serializers.DateTimeField(format="%d-%b-%Y", read_only=True)
+    
+    class Meta:
+        model = LegalDocument
+        fields = [
+            'type',
+            'version',
+            'content',
+            'updated_at'
         ]

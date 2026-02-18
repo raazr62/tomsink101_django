@@ -9,8 +9,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from rest_framework.permissions import AllowAny
-from .serializers import PlanItemSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .serializers import PlanItemSerializer, SubscriptionHeaderSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
 import requests
 import json
 from base64 import b64encode
@@ -675,3 +675,37 @@ class NewPricingView(APIView):
                 'message': 'Failed to fetch subscriptions',
                 'data': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Subscription Header
+class SubscriptionHeaderView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({
+                'status': status.HTTP_401_UNAUTHORIZED,
+                'success': False,
+                'message': 'Authentication required',
+                'data': None
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        subscription = Subscription.objects.filter(user=user).order_by('-start_date').select_related('package').first()
+
+        if not subscription:
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'No subscription found for this user',
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        serializer = SubscriptionHeaderSerializer(subscription)
+
+        return Response({
+            'status': status.HTTP_200_OK,
+            'success': True,
+            'message': 'Subscription header data retrieved successfully',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    
