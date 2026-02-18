@@ -22,7 +22,7 @@ from .views import (
 urlpatterns = [
     # Dashboard
     path('dashboard/', TaskDashboardView.as_view(), name='task-dashboard'),
-    
+        
     # Weekly Stats (for top cards in UI)
     path('weekly-stats/', WeeklyStatsView.as_view(), name='weekly-stats'),
     
