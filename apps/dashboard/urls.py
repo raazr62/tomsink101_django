@@ -23,8 +23,9 @@ urlpatterns = [
     path('dashboard/welcome/', WelcomeView.as_view(), name='welcome'),
     path('dashboard/workout-stats/', UserWorkoutStatsView.as_view(), name='workout-stats'),
     path("dashboard/daily-nutrition-stats/", NutritionPlanView.as_view(), name="daily-nutrition-plan"),
-    path("my-plan/stats/", MyPlanStatsView.as_view(), name="my-plan-stats"),
     path("dashboard/bodyweight/", BodyWeightView.as_view(), name="bodyweight-entry"),
+    path("my-plan/stats/", MyPlanStatsView.as_view(), name="my-plan-stats"),
+
 
 
 

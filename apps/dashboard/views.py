@@ -171,7 +171,6 @@ class UserWorkoutStatsView(APIView):
             MET = Decimal(6)  # Metabolic Equivalent of Task
             workout_duration = Decimal(0.125)  # Per workout duration in hours (7.5 minutes)
             weight = BodyWeightEntry.objects.filter(user=user).order_by('-created_at').first()
-            print(f"User weight for calorie calculation: {weight.weight_kg if weight else 'No weight entry found'} kg")
             
             calories = int(MET * weight.weight_kg * workout_duration) if weight else 0 # calories formula = METs x weight (kg) x time (hours)
             
@@ -321,7 +320,7 @@ class MyPlanStatsView(APIView):
 
             completeted_exercise = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end), status='completed').count()
             all_exercises = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end)).count()
-            weekly_percentage = completeted_exercise / all_exercises * 100 if all_exercises > 0 else 0
+            weekly_percentage = int(completeted_exercise / all_exercises * 100) if all_exercises > 0 else 0
 
             data = {
                 "weekly_progress": weekly_percentage,

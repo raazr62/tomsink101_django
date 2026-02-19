@@ -144,11 +144,11 @@ class PlanItemSerializer(serializers.ModelSerializer):
 
 # Subscription Header
 class SubscriptionHeaderSerializer(serializers.ModelSerializer):
-    active_plan = serializers.SerializerMethodField(method_name='get_active_plan')
+    active_plan = serializers.SerializerMethodField()
     start_date = serializers.DateTimeField(format="%b-%d, %Y", read_only=True)
-    remaining = serializers.SerializerMethodField(method_name='get_remaining')
+    remaining = serializers.SerializerMethodField()
     end_date = serializers.DateTimeField(format="%b-%d, %Y", read_only=True)
-    status = serializers.SerializerMethodField(method_name='get_status')
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
@@ -162,19 +162,16 @@ class SubscriptionHeaderSerializer(serializers.ModelSerializer):
         ]
 
     def get_active_plan(self, obj):
-        active_subscription = Subscription.objects.filter(user=obj.user, is_active=True).select_related('package').first()
-        return active_subscription.package.name if active_subscription else None
+        return obj.package.name if getattr(obj, "package", None) else None
 
     def get_remaining(self, obj):
-        if obj.end_date:
-            remaining_time = obj.end_date - timezone.now()
-            return remaining_time.days
+        if obj.is_active and obj.end_date:
+            return max((obj.end_date - timezone.now()).days, 0)
         return None
 
     def get_status(self, obj):
         if obj.is_active:
             return 'active'
-        elif obj.end_date and obj.end_date < timezone.now():
+        if obj.end_date and obj.end_date < timezone.now():
             return 'expired'
-        else:
-            return 'inactive'
+        return 'inactive'
