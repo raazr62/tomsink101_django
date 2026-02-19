@@ -52,24 +52,15 @@ class Package(models.Model):
             self.discount_price = self.price
         super().save(*args, **kwargs)
 
-
+# User Subscription
 class Subscription(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscription_user')
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='subscription_package')
-
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(blank=True, null=True)
-
-    # Payment method tracking
-    payment_method = models.CharField(
-        max_length=20,
-        choices=[('stripe', 'Stripe'), ('paypal', 'PayPal')],
-        default='stripe'
-    )
-    
+    payment_method = models.CharField(max_length=20, choices=[('stripe', 'Stripe'), ('paypal', 'PayPal')], default='stripe')
     stripe_subscription_id = models.CharField(max_length=100, blank=True)
     paypal_subscription_id = models.CharField(max_length=100, blank=True)
-    
     is_active = models.BooleanField(default=False)
 
     def __str__(self):
@@ -77,7 +68,6 @@ class Subscription(models.Model):
 
 
 class PackageFeature(models.Model):
-    """Features for each package"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='features')
     feature_text = models.CharField(max_length=255)
