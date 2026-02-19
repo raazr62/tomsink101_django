@@ -682,15 +682,13 @@ class SubscriptionHeaderView(APIView):
 
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({
-                'status': status.HTTP_401_UNAUTHORIZED,
-                'success': False,
-                'message': 'Authentication required',
-                'data': None
-            }, status=status.HTTP_401_UNAUTHORIZED)
 
-        subscription = Subscription.objects.filter(user=user).order_by('-start_date').select_related('package').first()
+        # active subscription
+        subscription = (Subscription.objects.filter(user=user, is_active=True).select_related('package').order_by('-start_date').first())
+
+        # latest subscription
+        if not subscription:
+            subscription = (Subscription.objects.filter(user=user).select_related('package').order_by('-start_date').first())
 
         if not subscription:
             return Response({
@@ -708,4 +706,3 @@ class SubscriptionHeaderView(APIView):
             'message': 'Subscription header data retrieved successfully',
             'data': serializer.data
         }, status=status.HTTP_200_OK)
-    
