@@ -19,12 +19,12 @@ class PackageSerializer(serializers.ModelSerializer):
 
 
 class PackageCMSSerializer(serializers.ModelSerializer):
-    """Serializer for public pricing display"""
     features = PackageFeatureSerializer(many=True, read_only=True)
     final_price = serializers.SerializerMethodField()
     price_display = serializers.SerializerMethodField()
     interval_display = serializers.CharField(source='get_interval_display', read_only=True)
     is_active = serializers.SerializerMethodField()
+    stripe_subscription_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Package
@@ -32,21 +32,58 @@ class PackageCMSSerializer(serializers.ModelSerializer):
             'id', 'name', 'tagline', 'price', 'final_price', 'price_display',
             'interval', 'interval_display', 'description', 'features',
             'is_popular', 'display_order', 'border_color', 'button_color',
-            'button_text_color', 'discount', 'discount_price', 'is_active'
+            'button_text_color', 'discount', 'discount_price', 'is_active',
+            'stripe_subscription_id',
         ]
-    
+
     def get_final_price(self, obj):
         return float(obj.discount_price if obj.discount > 0 else obj.price)
-    
+
     def get_price_display(self, obj):
         price = self.get_final_price(obj)
         return f'${int(price)}' if price == int(price) else f'${price:.2f}'
-    
+
+    # serializer cache for every request
+    def _get_active_subscription(self, obj):
+        if not hasattr(self, '_active_sub_cache'):
+            self._active_sub_cache = {}
+
+        if obj.pk in self._active_sub_cache:
+            return self._active_sub_cache[obj.pk]
+
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+
+        if not user or not user.is_authenticated:
+            self._active_sub_cache[obj.pk] = None
+            return None
+
+        sub = Subscription.objects.filter(
+            user=user,
+            package=obj,
+            is_active=True
+        ).only('payment_method', 'stripe_subscription_id').first()
+
+        self._active_sub_cache[obj.pk] = sub
+        return sub
+
     def get_is_active(self, obj):
-        return Subscription.objects.filter(
-            is_active=True,
-            package=obj
-        ).exists()
+        return self._get_active_subscription(obj) is not None
+
+    def get_stripe_subscription_id(self, obj):
+        sub = self._get_active_subscription(obj)
+        if sub and sub.payment_method == 'stripe':
+            return sub.stripe_subscription_id
+        return None
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        # is_active False remove field
+        if not representation.get('is_active'):
+            representation.pop('stripe_subscription_id', None)
+
+        return representation
 
 
 class PricingSectionSerializer(serializers.ModelSerializer):
@@ -107,26 +144,26 @@ class PlanItemSerializer(serializers.ModelSerializer):
 
 # Subscription Header
 class SubscriptionHeaderSerializer(serializers.ModelSerializer):
-    active_plans = serializers.SerializerMethodField()
+    active_plan = serializers.SerializerMethodField(method_name='get_active_plan')
     start_date = serializers.DateTimeField(format="%b-%d, %Y", read_only=True)
-    remaining = serializers.SerializerMethodField()
+    remaining = serializers.SerializerMethodField(method_name='get_remaining')
     end_date = serializers.DateTimeField(format="%b-%d, %Y", read_only=True)
-    status = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField(method_name='get_status')
 
     class Meta:
         model = Subscription
         fields = [
             'id',
-            'active_plans',
+            'active_plan',
             'start_date',
             'remaining',
             'end_date',
             'status',
         ]
 
-    def get_active_plans(self, obj):
-        active_plans = Subscription.objects.filter(user=obj.user, is_active=True).select_related('package')
-        return [subscription.package.name for subscription in active_plans]
+    def get_active_plan(self, obj):
+        active_subscription = Subscription.objects.filter(user=obj.user, is_active=True).select_related('package').first()
+        return active_subscription.package.name if active_subscription else None
 
     def get_remaining(self, obj):
         if obj.end_date:
