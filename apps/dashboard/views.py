@@ -891,3 +891,5 @@ class CoachInsightDetailView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
+
