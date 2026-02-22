@@ -189,6 +189,21 @@ class UserWorkoutStatsView(APIView):
             workout_minutes_target = weekly_workouts_target * workout_duration * 60  # Convert hours to minutes
             workout_minutes_actual = weekly_workout_completed * workout_duration * 60
 
+            # Persist weekly stats
+            stats, created = WeeklyStats.objects.get_or_create(
+                user=user,
+                week_start_date=week_start,
+                defaults={
+                    'week_end_date': week_end
+                }
+            )
+
+            stats.calories_burned = calories_burned_actual
+            stats.nutrition_score = nutrition_percentage
+            stats.workout_minutes = workout_minutes_actual
+            stats.workouts_completed = weekly_workout_completed
+            stats.save()
+
             response_data = {
                 "summaryCards": [
                     {"type": "workouts", "value": workout_percentage, "unit": "%"},
@@ -318,13 +333,40 @@ class MyPlanStatsView(APIView):
             week_start = today - timedelta(days=today.weekday())
             week_end = week_start + timedelta(days=6)
 
+            # workout percentage
             completeted_exercise = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end), status='completed').count()
             all_exercises = Exercise.objects.filter(workout_plan__user=user, date__range=(week_start, week_end)).count()
             weekly_percentage = int(completeted_exercise / all_exercises * 100) if all_exercises > 0 else 0
+            
+            # calories burned
+            calories_burned_kcal = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().calories_burned if WeeklyStats.objects.filter(user=user, week_start_date=week_start).exists() else 0
+            calories_difference = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().calories_burned - WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).first().calories_burned if WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).exists() else 0
+            calories_difference_percentage = int((calories_difference / WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).first().calories_burned) * 100) if WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).exists() and WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).first().calories_burned > 0 else 0
+            
+            # nutrition percentage
+            nutrition_percentage = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().nutrition_score if WeeklyStats.objects.filter(user=user, week_start_date=week_start).exists() else 0
+            nutrition_percentage_difference = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().nutrition_score - WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).first().nutrition_score if WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).exists() else 0
+
+            # active time
+            active_time = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().workout_minutes if WeeklyStats.objects.filter(user=user, week_start_date=week_start).exists() else 0
+            active_time_hours = round(active_time / 60, 1) if active_time > 0 else 0
+            active_time_difference = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().workout_minutes - WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).first().workout_minutes if WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).exists() else 0
+            active_time_difference_hours = round(active_time_difference / 60, 1) if active_time_difference > 0 else 0
+            
+            # workouts completed
+            workouts_completed = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().workouts_completed if WeeklyStats.objects.filter(user=user, week_start_date=week_start).exists() else 0
+            workouts_completed_difference = WeeklyStats.objects.filter(user=user, week_start_date=week_start).first().workouts_completed - WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).first().workouts_completed if WeeklyStats.objects.filter(user=user, week_start_date=week_start - timedelta(weeks=1)).exists() else 0
 
             data = {
                 "weekly_progress": weekly_percentage,
-
+                "calories_burned_kcal": calories_burned_kcal,
+                "calories_difference_percentage": calories_difference_percentage,
+                "nutrition_percentage": nutrition_percentage,
+                "nutrition_percentage_difference": nutrition_percentage_difference,
+                "active_time_hours": active_time_hours,
+                "active_time_difference_hours": active_time_difference_hours,
+                "workouts_completed": workouts_completed,
+                "workouts_completed_difference": workouts_completed_difference,
             }
 
             return Response({

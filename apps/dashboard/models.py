@@ -68,33 +68,20 @@ class WeeklyStats(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='weekly_stats')
     week_start_date = models.DateField()
     week_end_date = models.DateField()
+    calories_burned = models.IntegerField(default=0)
     
-    # Workout stats
     workouts_completed = models.IntegerField(default=0)
     workouts_target = models.IntegerField(default=5)
-    
-    # Nutrition stats  
     nutrition_score = models.IntegerField(default=0, help_text="Percentage 0-100")
-    
-    # Streak
     overall_streak = models.IntegerField(default=0, help_text="Consecutive days")
-    
-    # Success rate
     success_rate = models.IntegerField(default=0, help_text="Percentage 0-100")
     
-    # Calories
-    calories_burned = models.IntegerField(default=0)
     calories_target = models.IntegerField(default=2000)
-    
-    # Bodyweight
     bodyweight_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     bodyweight_target_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     bodyweight_initial = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    
-    # Workout time
     workout_minutes = models.IntegerField(default=0)
     workout_minutes_target = models.IntegerField(default=150)
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
