@@ -2,7 +2,6 @@ from django.utils import timezone
 from rest_framework import serializers
 from .models import Package, Subscription, PackageFeature, PricingSection
 from django.contrib.auth.models import User
-from .models import PlanItem, Features
 
 class PackageFeatureSerializer(serializers.ModelSerializer):
     class Meta:
@@ -119,30 +118,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = '__all__'
 
-# Pricing Section
-class FeatureSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Features
-        fields = [
-            'id',
-            'text',
-            'included',
-            'order',
-        ]
-
-class PlanItemSerializer(serializers.ModelSerializer):
-    features = FeatureSerializer(many=True)
-    class Meta:
-        model = PlanItem
-        fields = [
-            'id',
-            'name',
-            'title',
-            'price',
-            'is_active',
-            'billing_cycle',
-            'features',
-        ]
 
 # Subscription Header
 class SubscriptionHeaderSerializer(serializers.ModelSerializer):
