@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from .serializers import SubscriptionHeaderSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
 import requests
 import json
@@ -377,13 +378,16 @@ def stripe_webhook_view(request):
     return HttpResponse(status=200)
 
 class CancelSubscription(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication] 
+
     def post(self, request, subscription_id):
         user = request.user
         subscription = Subscription.objects.get(pk=subscription_id, user=user)
 
         try:
             if subscription.payment_method == 'stripe':
-                stripe.Subscription.cancel(subscription.stripe_subscription_id)
+                stripe.Subscription.delete(subscription.stripe_subscription_id)
             elif subscription.payment_method == 'paypal':
                 access_token = get_paypal_access_token()
                 if access_token:
@@ -417,6 +421,14 @@ class CancelSubscription(APIView):
                 'message': 'Failed to cancel subscription.',
                 'error': str(e)
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        
+        except Exception as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'message': 'An error occurred while cancelling subscription.',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
 
 
 class PayPalSubscriptionCreate(APIView):

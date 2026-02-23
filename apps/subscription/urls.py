@@ -22,7 +22,7 @@ urlpatterns = [
     path('subscription/<int:package_id>/paypal-checkout/', views.PayPalSubscriptionCreate.as_view(), name='paypal-subscription-checkout'),
     
     # Cancel subscription
-    path('cancel_subscription/<int:subscription_id>', views.CancelSubscription.as_view(), name='cancel_subscription'),
+    path('cancel_subscription/<int:subscription_id>/', views.CancelSubscription.as_view(), name='cancel_subscription'),
     
     # Webhooks
     path('webhook/', views.stripe_webhook_view, name='stripe-webhook'),
