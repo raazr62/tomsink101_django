@@ -23,8 +23,9 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     final_price = serializers.SerializerMethodField()
     price_display = serializers.SerializerMethodField()
     interval_display = serializers.CharField(source='get_interval_display', read_only=True)
-    is_active = serializers.CharField()
-    stripe_subscription_id = serializers.CharField()
+
+    is_active = serializers.SerializerMethodField()
+    stripe_subscription_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Package
@@ -62,13 +63,14 @@ class PackageCMSSerializer(serializers.ModelSerializer):
             user=user,
             package=obj,
             is_active=True
-        ).only('payment_method', 'stripe_subscription_id').first()
+        ).only('payment_method', 'stripe_subscription_id', 'is_active').first()
 
         self._active_sub_cache[obj.pk] = sub
         return sub
 
     def get_is_active(self, obj):
-        return self._get_active_subscription(obj) is not None
+        sub = self._get_active_subscription(obj)
+        return bool(sub and sub.is_active)
 
     def get_stripe_subscription_id(self, obj):
         sub = self._get_active_subscription(obj)
@@ -79,7 +81,7 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        # if is_active False, remove field
+        # if is_active False remove stripe_subscription_id
         if not representation.get('is_active'):
             representation.pop('stripe_subscription_id', None)
 
