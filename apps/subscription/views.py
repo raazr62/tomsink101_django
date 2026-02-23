@@ -662,11 +662,7 @@ class SubscriptionHeaderView(APIView):
         # active subscription
         subscription = (Subscription.objects.filter(user=user, is_active=True).select_related('package').order_by('-start_date').first())
 
-        # latest subscription
-        if not subscription:
-            subscription = (Subscription.objects.filter(user=user).select_related('package').order_by('-start_date').first())
-
-        if not subscription:
+        if not subscription or subscription.is_active == 'inactive':
             return Response({
                 'status': status.HTTP_200_OK,
                 'success': True,
