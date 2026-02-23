@@ -24,7 +24,7 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     price_display = serializers.SerializerMethodField()
     interval_display = serializers.CharField(source='get_interval_display', read_only=True)
     is_active = serializers.CharField()
-    stripe_subscription_id = serializers.SerializerMethodField()
+    stripe_subscription_id = serializers.CharField()
 
     class Meta:
         model = Package
