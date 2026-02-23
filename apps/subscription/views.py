@@ -1,4 +1,4 @@
-from .models import Features, Package, PlanItem, Subscription, PackageFeature, PricingSection
+from .models import Package, Subscription, PackageFeature, PricingSection
 import stripe
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .serializers import PlanItemSerializer, SubscriptionHeaderSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
+from .serializers import SubscriptionHeaderSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
 import requests
 import json
 from base64 import b64encode
@@ -597,15 +597,14 @@ class PricingSectionView(APIView):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+# Subscription Packages
 class PackageListView(APIView):
-    """Get all active packages with features"""
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         try:
             packages = Package.objects.filter(is_active=True).prefetch_related('features')
-            serializer = PackageCMSSerializer(packages, many=True)
+            serializer = PackageCMSSerializer(packages, many=True, context={'request': request})
             
             return Response({
                 'status': status.HTTP_200_OK,
@@ -650,30 +649,6 @@ class PackageDetailView(APIView):
                 'success': False,
                 'message': 'Failed to fetch package',
                 'error': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# Pricing Section
-class NewPricingView(APIView):
-    permission_classes = [AllowAny]
-    
-    def get(self, request):
-        try:
-            subscriptions = PlanItem.objects.filter(is_active=True).prefetch_related(Prefetch('features',queryset=Features.objects.order_by('order')))
-            serializer = PlanItemSerializer(subscriptions, many=True)
-            
-            return Response({
-                'status': status.HTTP_200_OK,
-                'success': True,
-                'message': 'Subscriptions fetched successfully',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            return Response({
-                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
-                'success': False,
-                'message': 'Failed to fetch subscriptions',
-                'data': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Subscription Header
