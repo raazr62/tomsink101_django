@@ -23,7 +23,7 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     final_price = serializers.SerializerMethodField()
     price_display = serializers.SerializerMethodField()
     interval_display = serializers.CharField(source='get_interval_display', read_only=True)
-    is_active = serializers.SerializerMethodField()
+    is_active = serializers.CharField()
     stripe_subscription_id = serializers.SerializerMethodField()
 
     class Meta:
@@ -79,7 +79,7 @@ class PackageCMSSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        # is_active False remove field
+        # if is_active False, remove field
         if not representation.get('is_active'):
             representation.pop('stripe_subscription_id', None)
 
