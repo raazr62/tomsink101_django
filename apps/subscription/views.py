@@ -1,3 +1,5 @@
+from django.shortcuts import get_object_or_404
+
 from .models import Package, Subscription, PackageFeature, PricingSection
 import stripe
 from django.views.decorators.csrf import csrf_exempt
@@ -383,7 +385,7 @@ class CancelSubscription(APIView):
 
     def post(self, request, subscription_id):
         user = request.user
-        subscription = Subscription.objects.get(pk=subscription_id, user=user)
+        subscription = get_object_or_404(Subscription, pk=subscription_id, user=user)
 
         try:
             if subscription.payment_method == 'stripe':
@@ -404,23 +406,8 @@ class CancelSubscription(APIView):
                 'status': status.HTTP_200_OK,
                 'success': True,
                 'message': 'Subscription cancelled successfully.',
+                'data': SubscriptionSerializer(subscription).data
             }, status=status.HTTP_200_OK)
-
-        except stripe.error.InvalidRequestError as e:
-            return Response({
-                'status': status.HTTP_400_BAD_REQUEST,
-                'success': False,
-                'message': 'Failed to cancel subscription.',
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        except stripe.error.RateLimitError as e:
-            return Response({
-                'status': status.HTTP_429_TOO_MANY_REQUESTS,
-                'success': False,
-                'message': 'Failed to cancel subscription.',
-                'error': str(e)
-            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
         
         except Exception as e:
             return Response({
@@ -428,7 +415,9 @@ class CancelSubscription(APIView):
                 'success': False,
                 'message': 'An error occurred while cancelling subscription.',
                 'error': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)   
+
+
 
 
 class PayPalSubscriptionCreate(APIView):
