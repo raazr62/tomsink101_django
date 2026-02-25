@@ -8,7 +8,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight, BodyWeightEntry
+from .models import (
+    FitnessGoal, Workout, WeeklyStats, NutritionPlan, 
+    CoachInsight, BodyWeightEntry, AchievementDefinition, UserAchievement
+)
 from django.db.models import Sum
 from .serializers import (
     DashboardSerializer, FitnessGoalSerializer, WorkoutSerializer,
@@ -19,6 +22,7 @@ from .serializers import (
 from decimal import Decimal
 from apps.dashboard.utils.empty_nutrition import empty_nutrition
 from apps.task.models import Meal, DietPlan, Exercise
+from django.db.models import Count, Q, F
 
 # Welcome
 class WelcomeView(APIView):
@@ -453,10 +457,154 @@ class BodyWeightView(APIView):
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+# User Achievements
+class UserAchievementsView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        try:
+            user = request.user
+            start_of_month = timezone.now().replace(day=1)
+            end_of_month = (start_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
+            # Fetch achievement definitions
+            calorie_crusher = AchievementDefinition.objects.filter(title="calorie crusher").first()
+            strength_master = AchievementDefinition.objects.filter(title="strength master").first()
+            marathon_runner = AchievementDefinition.objects.filter(title="marathon runner").first()
+            active_days = AchievementDefinition.objects.filter(title="active days").first()
+            workout_finisher = AchievementDefinition.objects.filter(title="workout finisher").first()
+            perfect_week = AchievementDefinition.objects.filter(title="perfect week").first()
+            month = timezone.now().strftime("%B")
 
+            # Calorie Crusher
+            cc_icon = calorie_crusher.icon.url if calorie_crusher and calorie_crusher.icon else None
+            cc_title = calorie_crusher.title if calorie_crusher else "Calorie Crusher"
+            cc_description = calorie_crusher.description if calorie_crusher else ""
+            cc_actual_value = Meal.objects.filter(diet_plan__user=user, status="completed", created_at__gte=start_of_month, created_at__lte=end_of_month).aggregate(total_calories=Sum('calories'))['total_calories'] or 0
+            cc_target_value = calorie_crusher.target_value if calorie_crusher else 0
 
+            # Strength Master
+            sm_icon = strength_master.icon.url if strength_master and strength_master.icon else None
+            sm_title = strength_master.title if strength_master else "Strength Master"
+            sm_description = strength_master.description if strength_master else ""
+            sm_actual_value = Exercise.objects.filter(workout_plan__user=user, status="completed", exercise_type="strength", created_at__gte=start_of_month, created_at__lte=end_of_month).count()
+            sm_target_value = strength_master.target_value if strength_master else 0
+
+            # Marathon Runner
+            mr_icon = marathon_runner.icon.url if marathon_runner and marathon_runner.icon else None
+            mr_title = marathon_runner.title if marathon_runner else "Marathon Runner"
+            mr_description = marathon_runner.description if marathon_runner else ""
+            mr_actual_value = 0 # No Marathon Run
+            mr_target_value = marathon_runner.target_value if marathon_runner else 0
+
+            # Active Days
+            ad_icon = active_days.icon.url if active_days and active_days.icon else None
+            ad_title = active_days.title if active_days else "Active Days"
+            ad_description = active_days.description if active_days else ""
+            ad_actual_value=(
+                Exercise.objects.filter(
+                    workout_plan__user=user,
+                    date__gte=start_of_month,
+                    date__lte=end_of_month,
+                )
+                .values("date")  
+                .annotate(
+                    total_ex=Count("id"),
+                    completed_ex=Count("id", filter=Q(status="completed")),
+                )
+                .filter(completed_ex=F("total_ex"))
+                .count()
+            )
+
+            ad_target_value = active_days.target_value if active_days else 0
+
+            # Workout Finisher
+            wf_icon = workout_finisher.icon.url if workout_finisher and workout_finisher.icon else None
+            wf_title = workout_finisher.title if workout_finisher else "Workout Finisher"
+            wf_description = workout_finisher.description if workout_finisher else ""
+            wf_actual_value = Exercise.objects.filter(workout_plan__user=user, status="completed", created_at__gte=start_of_month, created_at__lte=end_of_month).count()
+            wf_target_value = workout_finisher.target_value if workout_finisher else 0
+
+            # Perfect Week
+            pw_icon = perfect_week.icon.url if perfect_week and perfect_week.icon else None
+            pw_title = perfect_week.title if perfect_week else "Perfect Week"
+            pw_description = perfect_week.description if perfect_week else ""
+            pw_actual_value = Exercise.objects.filter(
+                workout_plan__user=user, 
+                status="completed", 
+                created_at__gte=start_of_month, 
+                created_at__lte=end_of_month
+                ).count() 
+            
+            pw_target_value = perfect_week.target_value if perfect_week else 0
+
+            data  = [{
+                "total_earned": 12,
+                "calorie_crusher": {
+                    "icon": cc_icon,
+                    "title": cc_title,
+                    "description": cc_description,
+                    "month": month,
+                    "actual_value": cc_actual_value,
+                    "target_value": cc_target_value,
+                },
+                "strength_master": {
+                    "icon": sm_icon,
+                    "title": sm_title,
+                    "description": sm_description,
+                    "month": month,
+                    "actual_value": sm_actual_value,
+                    "target_value": sm_target_value,
+                },
+                "marathon_runner": {
+                    "icon": mr_icon,
+                    "title": mr_title,
+                    "description": mr_description,
+                    "month": month,
+                    "actual_value": mr_actual_value,
+                    "target_value": mr_target_value,
+                },
+                "active_days": {
+                    "icon": ad_icon,
+                    "title": ad_title,
+                    "description": ad_description,
+                    "month": month,
+                    "actual_value": ad_actual_value,
+                    "target_value": ad_target_value,
+                },
+                "workout_finisher": {
+                    "icon": wf_icon,
+                    "title": wf_title,
+                    "description": wf_description,  
+                    "month": month,
+                    "actual_value": wf_actual_value,
+                    "target_value": wf_target_value,
+                },
+                "perfect_week": {
+                    "icon": pw_icon,
+                    "title": pw_title,
+                    "description": pw_description,
+                    "month": month,
+                    "actual_value": pw_actual_value,
+                    "target_value": pw_target_value,
+                },
+                
+            }]
+
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "User achievements fetched successfully",
+                "data": data
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "success": False,
+                "message": f"An error occurred: {str(e)}",
+                "data": None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

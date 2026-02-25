@@ -1,15 +1,15 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
 
 
-class ExerciseInline(admin.TabularInline):
+class ExerciseInline(TabularInline):
     model = Exercise
     extra = 0
     fields = ('name', 'sets', 'reps', 'description', 'pro_tips', 'completed_sets', 'status', 'order')
 
 
-class MealInline(admin.TabularInline):
+class MealInline(TabularInline):
     model = Meal
     extra = 0
     fields = ('meal_type', 'title', 'calories', 'protein', 'carbs', 'fats', 'status', 'order')
@@ -39,8 +39,8 @@ class WorkoutPlanAdmin(ModelAdmin):
 @admin.register(Exercise)
 class ExerciseAdmin(ModelAdmin):
     list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage', 'date')
-    list_filter = ('status', 'created_at')
-    search_fields = ('id', 'name', 'description', 'workout_plan__name', 'workout_plan__user__email')
+    list_filter = ('status', 'created_at', 'exercise_type')
+    search_fields = ('id', 'name', 'description', 'workout_plan__name', 'workout_plan__user__email', 'exercise_type')
     readonly_fields = ('id', 'completion_percentage', 'created_at', 'updated_at')
 
 

@@ -68,6 +68,7 @@ def generate_remaining_workouts(self, session_id, last_summary, workout_plan_id)
                     Exercise.objects.create(
                         workout_plan=workout_plan,
                         name=exercise_data.get('name', 'Unnamed Exercise'),
+                        exercise_type=exercise_data.get('type', 'strength'),
                         date=exercise_date,
                         sets=exercise_data.get('sets', 3),
                         reps=str(exercise_data.get('reps', '10-12')),

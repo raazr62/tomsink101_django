@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from cloudinary.models import CloudinaryField
 
 # Create your models here.
 
@@ -171,3 +172,50 @@ class BodyWeightEntry(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.weight_kg}"
+
+# Achievements
+class Achievement(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='achievements', null=True, blank=True)
+    total_earned = models.IntegerField(default=0, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.total_earned}"
+
+# Achievement Carts
+class AchievementDefinition(models.Model):
+    TITLE_CHOICES = [
+        ('calorie crusher', 'Calorie Crusher'),
+        ('strength master', 'Strength Master'),
+        ('marathon runner', 'Marathon Runner'),
+        ('active days', 'Active Days'),
+        ('workout finisher', 'Workout Finisher'),
+        ('perfect week', 'Perfect Week'),
+    ]
+    
+    icon = CloudinaryField('achievement_icon', null=True, blank=True)
+    title = models.CharField(max_length=100, choices=TITLE_CHOICES)
+    description = models.TextField(null=True, blank=True)
+    target_value = models.IntegerField(default=0, null=True, blank=True)
+    order = models.IntegerField(default=0, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+    
+    class Meta:
+        ordering = ['order']
+        verbose_name = "Achievement Input Definition"
+        verbose_name_plural = "Achievement Input Definitions"
+
+# User Achievements
+class UserAchievement(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    achievement = models.ForeignKey(AchievementDefinition, on_delete=models.CASCADE)
+    period_start = models.DateField(null=True, blank=True) 
+    actual_value = models.IntegerField(default=0, null=True, blank=True)
+    earned_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.achievement.title} - {self.actual_value}"
+

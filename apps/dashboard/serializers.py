@@ -1,8 +1,13 @@
 from rest_framework import serializers
-from .models import FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight, BodyWeightEntry
+from .models import (
+FitnessGoal, Workout, WeeklyStats, NutritionPlan, CoachInsight, 
+BodyWeightEntry, AchievementDefinition, UserAchievement
+
+)
 from apps.users.models import Profile
 from datetime import timedelta
 from django.utils import timezone
+from apps.users.helpers import get_cloudinary_url
 
 
 class FitnessGoalSerializer(serializers.ModelSerializer):
@@ -10,16 +15,20 @@ class FitnessGoalSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = FitnessGoal
-        fields = ['id', 'title', 'total_weeks', 'current_week', 'progress_percentage', 
-                  'start_date', 'end_date', 'is_active', 'created_at']
+        fields = [
+            'id', 'title', 'total_weeks', 'current_week', 'progress_percentage', 
+            'start_date', 'end_date', 'is_active', 'created_at'
+            ]
 
 
 class WorkoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workout
-        fields = ['id', 'title', 'workout_type', 'day', 'description', 'exercises_count', 
-                  'focus_area', 'scheduled_date', 'is_completed', 'completed_at', 
-                  'duration_minutes', 'calories_burned']
+        fields = [
+            'id', 'title', 'workout_type', 'day', 'description', 'exercises_count', 
+            'focus_area', 'scheduled_date', 'is_completed', 'completed_at', 
+            'duration_minutes', 'calories_burned'
+            ]
 
 
 class WeeklyStatsSerializer(serializers.ModelSerializer):
@@ -31,12 +40,14 @@ class WeeklyStatsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = WeeklyStats
-        fields = ['id', 'week_start_date', 'week_end_date', 'workouts_completed', 
-                  'workouts_target', 'workout_percentage', 'nutrition_score', 
-                  'overall_streak', 'success_rate', 'calories_burned', 'calories_target',
-                  'calories_comparison', 'bodyweight_kg', 'bodyweight_target_kg',
-                  'bodyweight_comparison', 'workout_minutes', 'workout_minutes_target',
-                  'workout_minutes_comparison', 'workouts_comparison']
+        fields = [
+            'id', 'week_start_date', 'week_end_date', 'workouts_completed', 
+            'workouts_target', 'workout_percentage', 'nutrition_score', 
+            'overall_streak', 'success_rate', 'calories_burned', 'calories_target',
+            'calories_comparison', 'bodyweight_kg', 'bodyweight_target_kg',
+            'bodyweight_comparison', 'workout_minutes', 'workout_minutes_target',
+            'workout_minutes_comparison', 'workouts_comparison'
+            ]
 
     def get_calories_comparison(self, obj):
         if obj.calories_target == 0:
@@ -83,10 +94,12 @@ class NutritionPlanSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = NutritionPlan
-        fields = ['id', 'date', 'protein_g', 'protein_target_g', 'protein_difference',
-                  'calories', 'calories_target', 'calories_difference',
-                  'fat_g', 'fat_target_g', 'fat_difference',
-                  'carbs_g', 'carbs_target_g', 'carbs_difference']
+        fields = [
+            'id', 'date', 'protein_g', 'protein_target_g', 'protein_difference',
+            'calories', 'calories_target', 'calories_difference',
+            'fat_g', 'fat_target_g', 'fat_difference',
+            'carbs_g', 'carbs_target_g', 'carbs_difference'
+            ]
 
 
 class CoachInsightSerializer(serializers.ModelSerializer):
@@ -137,3 +150,24 @@ class BodyWeightGetSerializer(serializers.ModelSerializer):
     
     def get_date(self, obj):
         return obj.created_at.strftime('%b %d').replace(' 0', ' ').strip()
+
+# Achievement Definition
+class AchievementDefinitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AchievementDefinition
+        fields = [
+            'id', 'icon', 'title', 'description', 'target_value', 'order' 
+            ]
+        
+        def get_icon(self, obj):
+            return get_cloudinary_url(obj.icon)
+
+# User Achievement
+class UserAchievementSerializer(serializers.ModelSerializer):
+    achievement = AchievementDefinitionSerializer(read_only=True)
+    
+    class Meta:
+        model = UserAchievement
+        fields = [
+            'id', 'achievement', 'period_start', 'actual_value', 'earned_at'
+            ]

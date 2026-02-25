@@ -53,10 +53,20 @@ class Exercise(models.Model):
         ('completed', 'Completed'),
         ('skipped', 'Skipped'),
     ]
-    
+
+    WORKOUT_TYPE_CHOICES = [
+        ('strength', 'Strength'),
+        ('cardio', 'Cardio'),
+        ('mobility', 'Mobility'),
+        ('hiit', 'HIIT'),
+        ('core', 'Core'),
+        ('full_body', 'Full Body'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workout_plan = models.ForeignKey(WorkoutPlan, on_delete=models.CASCADE, related_name='exercises')
     name = models.CharField(max_length=255, null=True, blank=True)
+    exercise_type = models.CharField(max_length=100, choices=WORKOUT_TYPE_CHOICES, null=True, blank=True)
     date = models.DateField(null=True, blank=True)  # Date for this exercise
     sets = models.IntegerField(default=3)
     reps = models.CharField(max_length=50, null=True, blank=True)  # Can be "10-12" or "30 seconds"
