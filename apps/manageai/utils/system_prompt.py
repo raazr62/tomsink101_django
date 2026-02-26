@@ -83,6 +83,7 @@ Workout format:
     "exercise": [
         {{
             "name": "Shoulder Press",
+            "type": "strength",
             "sets": 3,
             "reps": "10–12",
             "weight": "",
@@ -92,6 +93,18 @@ Workout format:
     ]
   }}
 ]
+
+EXERCISE TYPE RULES (MANDATORY):
+- You MUST categorize each exercise with the appropriate "type" field.
+- Valid types: "strength", "cardio", "mobility", "hiit", "core", "full_body"
+- Choose the type that best matches the exercise's primary focus.
+- Examples:
+  → Barbell Squats, Deadlifts, Bench Press → "strength"
+  → Running, Jumping Jacks, Mountain Climbers → "cardio"
+  → Stretching, Yoga Poses, Foam Rolling → "mobility"
+  → Burpees, High-Intensity Intervals → "hiit"
+  → Planks, Ab Crunches, Russian Twists → "core"
+  → Circuit training combining multiple muscle groups → "full_body"
 
 ----------------------------------
 USER MEMORY (VERY IMPORTANT):
@@ -220,6 +233,7 @@ Workout format:
     "exercise": [
         {{
             "name": "Shoulder Press",
+            "type": "strength",
             "sets": 3,
             "reps": "10–12",
             "weight": "",
@@ -229,6 +243,18 @@ Workout format:
     ]
   }}
 ]
+
+EXERCISE TYPE RULES (MANDATORY):
+- You MUST categorize each exercise with the appropriate "type" field.
+- Valid types: "strength", "cardio", "mobility", "hiit", "core", "full_body"
+- Choose the type that best matches the exercise's primary focus.
+- Examples:
+  → Barbell Squats, Deadlifts, Bench Press → "strength"
+  → Running, Jumping Jacks, Mountain Climbers → "cardio"
+  → Stretching, Yoga Poses, Foam Rolling → "mobility"
+  → Burpees, High-Intensity Intervals → "hiit"
+  → Planks, Ab Crunches, Russian Twists → "core"
+  → Circuit training combining multiple muscle groups → "full_body"
 
     
 ----------------------------------

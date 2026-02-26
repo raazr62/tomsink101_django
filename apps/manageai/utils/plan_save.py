@@ -25,6 +25,7 @@ def save_workout_plan_as_task(user, session, workout_data, summary):
             Exercise.objects.create(
                 workout_plan=workout_plan,
                 name=exercise_data.get('name', 'Unnamed Exercise'),
+                exercise_type=exercise_data.get('type', 'strength'),
                 date=exercise_date,
                 sets=exercise_data.get('sets', 3),
                 reps=str(exercise_data.get('reps', '10-12')),
