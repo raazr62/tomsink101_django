@@ -16,6 +16,8 @@ from .views import (
     CoachInsightListView,
     CoachInsightDetailView,
     UserAchievementsView,
+    PersonalRecordsView,
+
 )
 
 urlpatterns = [
@@ -26,6 +28,7 @@ urlpatterns = [
     path("dashboard/bodyweight/", BodyWeightView.as_view(), name="bodyweight-entry"),
     path("my-plan/stats/", MyPlanStatsView.as_view(), name="my-plan-stats"),
     path("achievements/cards/", UserAchievementsView.as_view(), name="achievement-cards"),
+    path("achievements/records/", PersonalRecordsView.as_view(), name="achievement-progress"),
     
 
 

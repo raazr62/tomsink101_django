@@ -75,7 +75,7 @@ class UserAchievementInline(TabularInline):
 
 @admin.register(UserAchievement)
 class UserAchievementAdmin(ModelAdmin):
-    list_display = ['user', 'achievement', 'period_start', 'actual_value', 'earned_at']
-    list_filter = ['achievement__title', 'earned_at']
+    list_display = ['user', 'achievement', 'period_start', 'actual_value', 'status', 'earned_at']
+    list_filter = ['achievement__title', 'status', 'earned_at']
     search_fields = ['user__email', 'achievement__title']
     readonly_fields = ['period_start', 'actual_value', 'earned_at']

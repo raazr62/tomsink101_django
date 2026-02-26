@@ -38,8 +38,8 @@ class WorkoutPlanAdmin(ModelAdmin):
 
 @admin.register(Exercise)
 class ExerciseAdmin(ModelAdmin):
-    list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage', 'date')
-    list_filter = ('status', 'created_at', 'exercise_type')
+    list_display = ('name', 'workout_plan', 'sets', 'reps', 'weight', 'completed_sets', 'status', 'completion_percentage', 'date')
+    list_filter = ('status', 'weight', 'created_at', 'exercise_type')
     search_fields = ('id', 'name', 'description', 'workout_plan__name', 'workout_plan__user__email', 'exercise_type')
     readonly_fields = ('id', 'completion_percentage', 'created_at', 'updated_at')
 
