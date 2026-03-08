@@ -657,10 +657,16 @@ class SubscriptionHeaderView(APIView):
     def get(self, request):
         user = request.user
 
-        # active subscription
-        subscription = (Subscription.objects.filter(user=user, is_active=True).select_related('package').order_by('-start_date').first())
+        # retrieve latest active subscription
+        subscription = Subscription.objects.filter(user=user, is_active=True).select_related('package').order_by('-start_date').first()
 
-        if not subscription or subscription.is_active == 'inactive':
+        # expire if beyond end_date
+        if subscription and subscription.end_date and subscription.end_date < timezone.now():
+            subscription.is_active = False
+            subscription.save()
+            subscription = None
+
+        if not subscription:
             return Response({
                 'status': status.HTTP_200_OK,
                 'success': True,

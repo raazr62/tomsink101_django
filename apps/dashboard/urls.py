@@ -5,6 +5,7 @@ from .views import (
     NutritionPlanView,
     MyPlanStatsView,
     BodyWeightView,
+    CoachInsightsView,
 
     
     
@@ -26,6 +27,7 @@ urlpatterns = [
     path('dashboard/workout-stats/', UserWorkoutStatsView.as_view(), name='workout-stats'),
     path("dashboard/daily-nutrition-stats/", NutritionPlanView.as_view(), name="daily-nutrition-plan"),
     path("dashboard/bodyweight/", BodyWeightView.as_view(), name="bodyweight-entry"),
+    path("dashboard/insights/", CoachInsightsView.as_view(), name="coach-insights"),
     path("my-plan/stats/", MyPlanStatsView.as_view(), name="my-plan-stats"),
     path("achievements/cards/", UserAchievementsView.as_view(), name="achievement-cards"),
     path("achievements/records/", PersonalRecordsView.as_view(), name="achievement-progress"),
@@ -54,6 +56,6 @@ urlpatterns = [
     path('dashboard/stats/', WeeklyStatsView.as_view(), name='weekly-stats'),
     
     # Coach insights endpoints
-    path('dashboard/insights/', CoachInsightListView.as_view(), name='coach-insights-list'),
+    path('dashboard/insights-coach/', CoachInsightListView.as_view(), name='coach-insights-list'),
     path('dashboard/insights/<int:pk>/', CoachInsightDetailView.as_view(), name='coach-insight-detail'),
 ]
