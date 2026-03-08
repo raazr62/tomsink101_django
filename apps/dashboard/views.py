@@ -622,8 +622,8 @@ class UserAchievementsView(APIView):
             # 6. Perfect Week
             pw_weeks = 0
             today_date = now.date()
-            for i in range(4):
-                # start of week `i` weeks ago (Monday)
+
+            for i in range(1, 5):  # 1 = last week, up to 4 weeks ago
                 week_start = today_date - timedelta(days=today_date.weekday() + 7 * i)
                 week_end = week_start + timedelta(days=6)
 
