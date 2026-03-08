@@ -620,12 +620,18 @@ class UserAchievementsView(APIView):
             )
 
             # 6. Perfect Week
+            # count how many **distinct days** in the current calendar week
+            # the user completed at least one workout.  A "perfect week" is
+            # usually seven days, so the definition's target_value should be
+            # configured accordingly (e.g. 7).
+            week_start = now.date() - timedelta(days=now.date().weekday())
+            week_end = week_start + timedelta(days=6)
+
             pw_actual_value_raw = Exercise.objects.filter(
                 workout_plan__user=user,
                 status="completed",
-                created_at__gte=start_of_month,
-                created_at__lte=end_of_month
-            ).count()
+                date__range=(week_start, week_end)
+            ).values("date").distinct().count()
 
             perfect_week_data = self.get_or_update_achievement(
                 user=user,
