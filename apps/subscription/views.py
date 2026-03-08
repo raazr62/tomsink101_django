@@ -19,7 +19,6 @@ import json
 from base64 import b64encode
 from django.db.models import Prefetch
 
-# Create your views here.
 
 User = get_user_model()
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -117,9 +116,8 @@ class SubscriptionView(APIView):
         }
         return Response(response)
 
-
+# Subscription Create
 class SubscriptionCreate(APIView):
-    """Create Stripe subscription checkout session."""
     
     def post(self, request, package_id):
         user = request.user

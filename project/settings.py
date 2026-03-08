@@ -285,8 +285,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_KEY = config("STRIPE_WEBHOOK_KEY")
 
-STRIPE_SUCCESS_URL = "https://astonishing-cupcake-ab36d3.netlify.app/payment-success"
-STRIPE_CANCEL_URL = "https://astonishing-cupcake-ab36d3.netlify.app/payment-cancel"
+STRIPE_SUCCESS_URL = "https://strenno.ai/payment-success"
+STRIPE_CANCEL_URL = "https://strenno.ai/payment-cancel"
 
 
 # PayPal Configuration
