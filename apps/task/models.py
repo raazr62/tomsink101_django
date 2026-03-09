@@ -87,7 +87,23 @@ class Exercise(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.sets} sets x {self.reps}"
-    
+
+
+# Chat messages tied to a specific exercise
+class ExerciseChatMessage(models.Model):
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name='chat_messages')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='exercise_chats')
+    user_message = models.TextField()
+    ai_message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Exercise Chat Message'
+        verbose_name_plural = 'Exercise Chat Messages'
+
+    def __str__(self):
+        return f"Chat for {self.exercise.name} by {self.user.email} at {self.created_at}"    
     @property
     def is_completed(self):
         return self.status == 'completed'
@@ -192,7 +208,6 @@ class Meal(models.Model):
 
 
 class DailyProgress(models.Model):
-    """Model to track daily progress for workout and diet completion."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

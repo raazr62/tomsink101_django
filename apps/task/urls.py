@@ -17,6 +17,7 @@ from .views import (
     ResetAllTaskDataView,
     WorkoutReviewOptionsView,
     WorkoutReviewView,
+    ExerciseChatView,
 )
 
 urlpatterns = [
@@ -39,6 +40,7 @@ urlpatterns = [
     # Exercises
     path('exercises/<uuid:exercise_id>/', ExerciseUpdateView.as_view(), name='exercise-update'),
     path('exercises/<uuid:exercise_id>/toggle-set/', ExerciseSetToggleView.as_view(), name='exercise-set-toggle'),
+    path('exercises/<uuid:exercise_id>/chat/', ExerciseChatView.as_view(), name='exercise-chat'),
     
     # Diet Plans
     path('diet-plans/', DietPlanListView.as_view(), name='diet-plan-list'),

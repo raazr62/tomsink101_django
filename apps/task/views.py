@@ -1,3 +1,6 @@
+import json
+import re
+
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,8 +13,11 @@ from calendar import monthrange
 from django.db.models import Min, Max
 from collections import defaultdict
 
-from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview, ExerciseChatMessage
 from apps.manageai.models import ChatSession, ChatMessage
+
+from apps.utils.openai_utils import get_openai_client
+from apps.manageai.utils.system_prompt import SYSTEM_PROMPT_FOR_WORKOUT_BACKGROUND
 
 from .serializers import (
     ReplaceMealSerializer,
@@ -24,7 +30,8 @@ from .serializers import (
     MealUpdateSerializer,
     WorkoutReviewSerializer,
     WorkoutReviewCreateSerializer,
-    WorkoutReviewOptionsSerializer
+    WorkoutReviewOptionsSerializer,
+    ExerciseChatRequestSerializer
 )
 
 
@@ -877,6 +884,92 @@ class ResetAllTaskDataView(APIView):
                 "success": False,
                 "message": "Failed to reset task data",
                 "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Chat Exercise
+class ExerciseChatView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, exercise_id):
+        serializer = ExerciseChatRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user_input = serializer.validated_data['user_input']
+        exercise = get_object_or_404(Exercise, id=exercise_id, workout_plan__user=request.user)
+
+        exercise_context = {
+            "name": exercise.name,
+            "sets": exercise.sets,
+            "reps": exercise.reps,
+            "weight": exercise.weight,
+            "description": exercise.description or "",
+            "pro_tips": exercise.pro_tips or []
+        }
+
+        history = ""
+        msgs = ExerciseChatMessage.objects.filter(exercise=exercise, user=request.user)
+        for msg in msgs:
+            history += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
+        if not history:
+            history = "No previous conversation."
+
+        try:
+            client = get_openai_client()
+            system_prompt = SYSTEM_PROMPT_FOR_WORKOUT_BACKGROUND.format(
+                current_date=datetime.now().strftime('%Y-%m-%d'),
+                last_summary=exercise_context.get("description", ""),
+                conversation_history=history
+            )
+            response = client.chat.completions.create(
+                model="gpt-5.2",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_input}
+                ],
+                temperature=0.7,
+            )
+
+            ai_reply = response.choices[0].message.content.strip()
+            ai_reply = re.sub(r'^```json\s*', '', ai_reply)
+            ai_reply = re.sub(r'^```\s*', '', ai_reply)
+            ai_reply = re.sub(r'\s*```$', '', ai_reply).strip()
+
+            data_json = json.loads(ai_reply)
+            ai_message = data_json.get('message', '')
+            summary = data_json.get('summary', '')
+
+            ExerciseChatMessage.objects.create(
+                exercise=exercise,
+                user=request.user,
+                user_message=user_input,
+                ai_message=ai_message
+            )
+
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'AI response generated successfully',
+                'data': {
+                    'exercise_id': str(exercise.id),
+                    'message': ai_message,
+                    'summary': summary
+                }
+            }, status=status.HTTP_200_OK)
+
+        except json.JSONDecodeError as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'error': 'Failed to parse AI response',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'success': False,
+                'error': 'An error occurred',
+                'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

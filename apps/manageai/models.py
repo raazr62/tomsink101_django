@@ -2,9 +2,8 @@ from django.db import models
 from django.conf import settings
 import uuid
 
-
+# Chat Session
 class ChatSession(models.Model):
-    """Model to store chat sessions and conversation history."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -22,9 +21,8 @@ class ChatSession(models.Model):
     def __str__(self):
         return f"Chat Session {self.id} - {self.user.email}"
 
-
+# Chat Message
 class ChatMessage(models.Model):
-    """Model to store individual messages in a chat session."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session = models.ForeignKey(
         ChatSession,
