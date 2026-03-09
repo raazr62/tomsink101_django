@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
+from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview, ExerciseChatMessage
 from apps.users.helpers import get_cloudinary_url
 
 class ExerciseSerializer(serializers.ModelSerializer):
@@ -118,6 +118,24 @@ class WorkoutReviewOptionsSerializer(serializers.Serializer):
     target_hit_options = serializers.ListField(child=serializers.DictField())
     energy_level_options = serializers.ListField(child=serializers.DictField())
     body_feeling_options = serializers.ListField(child=serializers.DictField())
+
+
+# ---- exercise chat serializers ----
+class ExerciseChatRequestSerializer(serializers.Serializer):
+    exercise_id = serializers.UUIDField()
+    user_input = serializers.CharField()
+
+    def validate_user_input(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("User input cannot be empty.")
+        return value.strip()
+
+
+class ExerciseChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExerciseChatMessage
+        fields = ['id', 'exercise', 'user', 'user_message', 'ai_message', 'created_at']
+        read_only_fields = ['id', 'exercise', 'user', 'created_at']
     satisfaction_options = serializers.ListField(child=serializers.DictField())
 
 # Replace Meal

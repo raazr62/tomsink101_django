@@ -1,10 +1,37 @@
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
-from .models import Package
+from .models import Package, Subscription
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
 import stripe
 import requests
 from base64 import b64encode
+
+User = get_user_model()
+
+# 30 Days free trial for new users
+@receiver(post_save, sender=User)
+def grant_free_pro_trial(sender, instance, created, **kwargs):
+    if not created:
+        return
+    # pick the Pro package by name or fall back to a free package
+    pro_pkg = Package.objects.filter(name__iexact="pro").first()
+    if not pro_pkg:
+        pro_pkg = Package.objects.filter(price=0).first()
+    if not pro_pkg:
+        return
+    if Subscription.objects.filter(user=instance, is_active=True).exists():
+        return
+    Subscription.objects.create(
+        user=instance,
+        package=pro_pkg,
+        start_date=timezone.now(),
+        end_date=timezone.now() + timedelta(days=30),
+        is_active=True,
+        payment_method="free_trial",
+    )
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 

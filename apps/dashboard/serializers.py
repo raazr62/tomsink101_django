@@ -105,7 +105,9 @@ class NutritionPlanSerializer(serializers.ModelSerializer):
 class CoachInsightSerializer(serializers.ModelSerializer):
     class Meta:
         model = CoachInsight
-        fields = ['id', 'message', 'insight_type', 'is_read', 'created_at']
+        fields = [
+            'message'
+        ]
 
 
 class DashboardSerializer(serializers.Serializer):

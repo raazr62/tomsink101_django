@@ -814,6 +814,44 @@ class PersonalRecordsView(APIView):
                 "data": None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# Coach Insights
+class CoachInsightsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            insights = CoachInsight.objects.filter(user=user).first()
+            if insights:
+                serializer = CoachInsightSerializer(insights)
+                return Response({
+                    "status": 200,
+                    "success": True,
+                    "message": "Coach insights fetched successfully",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
+            
+            else:
+                # return a generic motivational message when there are no coach insights yet
+                motivational_message = (
+                    "Keep pushing forward! Every step you take brings you closer to your goals. "
+                    "Stay consistent and trust the process."
+                )
+                return Response({
+                    "status": 200,
+                    "success": True,
+                    "message": "No coach insights available, here's some motivation", 
+                    "data": {"message": motivational_message}
+                }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "success": False,
+                "message": "An error occurred while fetching coach insights",
+                "data": None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
@@ -1244,9 +1282,6 @@ class WeeklyStatsView(APIView):
 
 
 class CoachInsightListView(APIView):
-    """
-    List coach insights
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

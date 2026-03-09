@@ -139,7 +139,11 @@ class SubscriptionHeaderSerializer(serializers.ModelSerializer):
         ]
 
     def get_active_plan(self, obj):
-        return obj.package.name if getattr(obj, "package", None) else None
+        name = obj.package.name if getattr(obj, "package", None) else None
+        # indicate trial in the plan name
+        if name and getattr(obj, 'payment_method', None) == 'free_trial' and obj.is_active:
+            name = f"{name} (trial)"
+        return name
 
     def get_remaining(self, obj):
         if obj.is_active and obj.end_date:
@@ -148,6 +152,8 @@ class SubscriptionHeaderSerializer(serializers.ModelSerializer):
 
     def get_status(self, obj):
         if obj.is_active:
+            if getattr(obj, 'payment_method', None) == 'free_trial':
+                return 'trial'
             return 'active'
         if obj.end_date and obj.end_date < timezone.now():
             return 'expired'
