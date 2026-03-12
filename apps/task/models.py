@@ -87,6 +87,16 @@ class Exercise(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.sets} sets x {self.reps}"
+    
+    @property
+    def is_completed(self):
+        return self.status == 'completed'
+    
+    @property
+    def completion_percentage(self):
+        if self.sets == 0:
+            return 0
+        return round((self.completed_sets / self.sets) * 100, 2)
 
 
 # Chat messages tied to a specific exercise
@@ -104,15 +114,7 @@ class ExerciseChatMessage(models.Model):
 
     def __str__(self):
         return f"Chat for {self.exercise.name} by {self.user.email} at {self.created_at}"    
-    @property
-    def is_completed(self):
-        return self.status == 'completed'
-    
-    @property
-    def completion_percentage(self):
-        if self.sets == 0:
-            return 0
-        return round((self.completed_sets / self.sets) * 100, 2)
+
 
 # Diet Plan
 class DietPlan(models.Model):
@@ -205,6 +207,7 @@ class Meal(models.Model):
     @property
     def is_completed(self):
         return self.status == 'completed'
+
 
 
 class DailyProgress(models.Model):
