@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from apps.cms.models import (
-    Page, HeroSection, FitnessGoal, SuccessStoriesSection,
+    LegalDocument, Page, HeroSection, FitnessGoal, SuccessStoriesSection,
     Testimonial, AICoachSection, FeatureSection, CTASection,
-    FooterLink, SocialMediaLink, FAQ
+    FooterLink, SocialMediaLink, FAQ, ContactInfo, 
 )
 
 
@@ -13,13 +13,13 @@ class FitnessGoalSerializer(serializers.ModelSerializer):
 
 
 class HeroSectionSerializer(serializers.ModelSerializer):
-    goals = FitnessGoalSerializer(many=True, read_only=True)
+    # goals = FitnessGoalSerializer(many=True, read_only=True)
     
     class Meta:
         model = HeroSection
         fields = [
-            'id', 'heading', 'sub_heading', 'description', 
-            'background_image', 'status', 'order', 'goals'
+            'id', 'heading', 'description', 
+            'background_image'
         ]
 
 
@@ -27,8 +27,14 @@ class TestimonialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Testimonial
         fields = [
-            'id', 'user_name', 'user_avatar', 'rating', 
-            'testimonial_text', 'date', 'order', 'is_active'
+            'id', 
+            'user_name', 
+            'user_avatar', 
+            'rating', 
+            'testimonial_text', 
+            'date', 
+            'order', 
+            'is_active'
         ]
 
 
@@ -47,8 +53,7 @@ class AICoachSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AICoachSection
         fields = [
-            'id', 'badge_text', 'heading', 'description', 
-            'button_text', 'button_link', 'preview_image',
+            'id', 'badge_text', 'heading', 'description', 'preview_image',
             'background_color', 'order', 'status'
         ]
 
@@ -57,9 +62,7 @@ class FeatureSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeatureSection
         fields = [
-            'id', 'section_name', 'heading', 'sub_heading', 
-            'description', 'image', 'button_text', 'button_link',
-            'background_color', 'order', 'status'
+            'id', 'heading', 'description', 'button_text', 'button_link'
         ]
 
 
@@ -84,7 +87,7 @@ class FooterLinkSerializer(serializers.ModelSerializer):
 class SocialMediaLinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = SocialMediaLink
-        fields = ['id', 'platform', 'url', 'icon', 'order', 'is_active']
+        fields = ['id', 'platform', 'url', 'order']
 
 
 class FAQSerializer(serializers.ModelSerializer):
@@ -115,3 +118,35 @@ class CompleteCMSSerializer(serializers.Serializer):
     social_media_links = SocialMediaLinkSerializer(many=True)
     faqs = FAQSerializer(many=True)
     pages = PageSerializer(many=True)
+
+# Contact
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactInfo
+        fields = [
+            'email', 
+            'phone_number', 
+            'address'
+        ]
+
+# Help & Support
+class HelpSupportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactInfo
+        fields = [
+            'email', 
+            'phone_number', 
+        ]
+
+# Privacy & Terms
+class LegalDocumentSerializer(serializers.ModelSerializer):    
+    updated_at = serializers.DateTimeField(format="%d-%b-%Y", read_only=True)
+    
+    class Meta:
+        model = LegalDocument
+        fields = [
+            'type',
+            'version',
+            'content',
+            'updated_at'
+        ]

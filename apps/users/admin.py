@@ -4,6 +4,7 @@ from .models import User, Profile, UserReferral
 from django.utils.html import format_html
 from django.db.models import Count
 from apps.prelaunch.models import PrelaunchUser
+from apps.users.helpers import preview_image
 
 # User
 @admin.register(User)
@@ -25,7 +26,8 @@ class CustomAdminClass(ModelAdmin):
 
     def preview_user_image(self, obj):
         if obj.profile.avatar:
-            return format_html('<img src="{}" style="max-height: 50px; max-width: 50px;" />', obj.profile.avatar.url)
+            url = preview_image(obj.profile.avatar)
+            return format_html('<img src="{}" style="max-height: 50px; max-width: 50px;" />', url)
         return "No Image"
     
     def check_is_superuser(self, obj):

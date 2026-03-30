@@ -1,9 +1,9 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from .models import ChatSession, ChatMessage
 
 
-class ChatMessageInline(admin.TabularInline):
+class ChatMessageInline(TabularInline):
     model = ChatMessage
     extra = 0
     readonly_fields = ('id', 'user_message', 'ai_message', 'workout', 'diet', 'summary', 'created_at')

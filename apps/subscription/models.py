@@ -1,8 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 import uuid
-
-# Create your models here.
 
 SUBSCRIPTION_TYPE = (
     ('year', 'Yearly'),
@@ -10,6 +9,7 @@ SUBSCRIPTION_TYPE = (
     ('week', 'Weekly'),
     ('daily', 'Daily')
 )
+
 class Package(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
     tagline = models.CharField(max_length=255, blank=True, null=True, help_text='e.g., "Perfect for trying out GoalAI"')
@@ -52,32 +52,39 @@ class Package(models.Model):
             self.discount_price = self.price
         super().save(*args, **kwargs)
 
-
+# User Subscription
 class Subscription(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscription_user')
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='subscription_package')
-
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(blank=True, null=True)
-
-    # Payment method tracking
-    payment_method = models.CharField(
-        max_length=20,
-        choices=[('stripe', 'Stripe'), ('paypal', 'PayPal')],
-        default='stripe'
-    )
-    
+    PAYMENT_METHOD_CHOICES = [
+        ('stripe', 'Stripe'),
+        ('paypal', 'PayPal'),
+        ('free_trial', 'Free Trial'),
+    ]
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='stripe')
     stripe_subscription_id = models.CharField(max_length=100, blank=True)
     paypal_subscription_id = models.CharField(max_length=100, blank=True)
-    
     is_active = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.user.email} - {self.package.name}'
 
+    @property
+    def is_valid(self):
+        if not self.is_active:
+            return False
+        if self.end_date and timezone.now() > self.end_date:
+            return False
+        return True
+
+    @property
+    def is_trial(self):
+        return self.payment_method == 'free_trial' and self.is_valid
+
 
 class PackageFeature(models.Model):
-    """Features for each package"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='features')
     feature_text = models.CharField(max_length=255)

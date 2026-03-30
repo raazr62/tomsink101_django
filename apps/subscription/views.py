@@ -1,3 +1,5 @@
+from django.shortcuts import get_object_or_404
+
 from .models import Package, Subscription, PackageFeature, PricingSection
 import stripe
 from django.views.decorators.csrf import csrf_exempt
@@ -9,13 +11,14 @@ from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from rest_framework.permissions import AllowAny
-from .serializers import SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from .serializers import SubscriptionHeaderSerializer, SubscriptionSerializer, PackageSerializer, PricingSectionSerializer, PackageCMSSerializer
 import requests
 import json
 from base64 import b64encode
+from django.db.models import Prefetch
 
-# Create your views here.
 
 User = get_user_model()
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -113,9 +116,8 @@ class SubscriptionView(APIView):
         }
         return Response(response)
 
-
+# Subscription Create
 class SubscriptionCreate(APIView):
-    """Create Stripe subscription checkout session."""
     
     def post(self, request, package_id):
         user = request.user
@@ -376,13 +378,16 @@ def stripe_webhook_view(request):
     return HttpResponse(status=200)
 
 class CancelSubscription(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication] 
+
     def post(self, request, subscription_id):
         user = request.user
-        subscription = Subscription.objects.get(pk=subscription_id, user=user)
+        subscription = get_object_or_404(Subscription, pk=subscription_id, user=user)
 
         try:
             if subscription.payment_method == 'stripe':
-                stripe.Subscription.cancel(subscription.stripe_subscription_id)
+                stripe.Subscription.delete(subscription.stripe_subscription_id)
             elif subscription.payment_method == 'paypal':
                 access_token = get_paypal_access_token()
                 if access_token:
@@ -399,23 +404,18 @@ class CancelSubscription(APIView):
                 'status': status.HTTP_200_OK,
                 'success': True,
                 'message': 'Subscription cancelled successfully.',
+                'data': SubscriptionSerializer(subscription).data
             }, status=status.HTTP_200_OK)
-
-        except stripe.error.InvalidRequestError as e:
+        
+        except Exception as e:
             return Response({
-                'status': status.HTTP_400_BAD_REQUEST,
+                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
                 'success': False,
-                'message': 'Failed to cancel subscription.',
+                'message': 'An error occurred while cancelling subscription.',
                 'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)   
 
-        except stripe.error.RateLimitError as e:
-            return Response({
-                'status': status.HTTP_429_TOO_MANY_REQUESTS,
-                'success': False,
-                'message': 'Failed to cancel subscription.',
-                'error': str(e)
-            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
 
 
 class PayPalSubscriptionCreate(APIView):
@@ -596,15 +596,14 @@ class PricingSectionView(APIView):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+# Subscription Packages
 class PackageListView(APIView):
-    """Get all active packages with features"""
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         try:
             packages = Package.objects.filter(is_active=True).prefetch_related('features')
-            serializer = PackageCMSSerializer(packages, many=True)
+            serializer = PackageCMSSerializer(packages, many=True, context={'request': request})
             
             return Response({
                 'status': status.HTTP_200_OK,
@@ -650,3 +649,36 @@ class PackageDetailView(APIView):
                 'message': 'Failed to fetch package',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Subscription Header
+class SubscriptionHeaderView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # retrieve latest active subscription
+        subscription = Subscription.objects.filter(user=user, is_active=True).select_related('package').order_by('-start_date').first()
+
+        # expire if beyond end_date
+        if subscription and subscription.end_date and subscription.end_date < timezone.now():
+            subscription.is_active = False
+            subscription.save()
+            subscription = None
+
+        if not subscription:
+            return Response({
+                'status': status.HTTP_200_OK,
+                'success': True,
+                'message': 'No subscription found for this user',
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        serializer = SubscriptionHeaderSerializer(subscription)
+
+        return Response({
+            'status': status.HTTP_200_OK,
+            'success': True,
+            'message': 'Subscription header data retrieved successfully',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)

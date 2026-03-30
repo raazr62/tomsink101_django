@@ -8,6 +8,12 @@ def get_cloudinary_url(file_field):
     url, _ = cloudinary_url(str(file_field), secure=True)
     return url
 
+def preview_image(file_field):
+    if not file_field:
+        return None
+    url, _ = cloudinary_url(str(file_field), secure=True)
+    return url
+
 def generate_referral_code(name):
     # Create slug from name (max 10 chars to keep code short)
     name_slug = slugify(name)[:10]

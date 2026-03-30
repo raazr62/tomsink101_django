@@ -1,18 +1,16 @@
 from rest_framework import serializers
 from .models import ChatSession, ChatMessage
 
-
+# Chat Message
 class ChatMessageSerializer(serializers.ModelSerializer):
-    """Serializer for ChatMessage model."""
     
     class Meta:
         model = ChatMessage
         fields = ['id', 'user_message', 'ai_message', 'workout', 'diet', 'summary', 'created_at']
         read_only_fields = ['id', 'created_at']
 
-
+# Chat Session
 class ChatSessionSerializer(serializers.ModelSerializer):
-    """Serializer for ChatSession model."""
     messages = ChatMessageSerializer(many=True, read_only=True)
     message_count = serializers.SerializerMethodField()
     workout_plans_count = serializers.SerializerMethodField()
@@ -33,9 +31,8 @@ class ChatSessionSerializer(serializers.ModelSerializer):
     def get_diet_plans_count(self, obj):
         return obj.diet_plans.count()
 
-
+# Chat Session Detail 
 class ChatSessionDetailSerializer(serializers.ModelSerializer):
-    """Detailed serializer for ChatSession model with full plan information."""
     messages = ChatMessageSerializer(many=True, read_only=True)
     message_count = serializers.SerializerMethodField()
     workout_plans = serializers.SerializerMethodField()
@@ -60,9 +57,8 @@ class ChatSessionDetailSerializer(serializers.ModelSerializer):
         plans = obj.diet_plans.all().order_by('-created_at')
         return DietPlanSerializer(plans, many=True).data
 
-
+# Chat Request
 class ChatRequestSerializer(serializers.Serializer):
-    """Serializer for chat request."""
     session_id = serializers.UUIDField(required=False, allow_null=True)
     user_input = serializers.CharField(required=True, allow_blank=False)
     
@@ -71,9 +67,8 @@ class ChatRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("User input cannot be empty.")
         return value.strip()
 
-
+# Chat Response
 class ChatResponseSerializer(serializers.Serializer):
-    """Serializer for chat response."""
     session_id = serializers.UUIDField()
     response = serializers.DictField()
     
@@ -88,9 +83,8 @@ class ChatResponseSerializer(serializers.Serializer):
             }
         }
 
-
+# Modify Plan Request
 class ModifyPlanRequestSerializer(serializers.Serializer):
-    """Serializer for plan modification request."""
     session_id = serializers.UUIDField(required=False, allow_null=True)
     workout_plan_id = serializers.UUIDField(required=False, allow_null=True)
     diet_plan_id = serializers.UUIDField(required=False, allow_null=True)
@@ -102,7 +96,6 @@ class ModifyPlanRequestSerializer(serializers.Serializer):
         return value.strip()
     
     def validate(self, data):
-        """Ensure at least one plan ID is provided."""
         if not data.get('workout_plan_id') and not data.get('diet_plan_id'):
             raise serializers.ValidationError(
                 "At least one of workout_plan_id or diet_plan_id must be provided."

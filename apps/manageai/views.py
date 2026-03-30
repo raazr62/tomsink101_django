@@ -1,214 +1,31 @@
 import json
 import re
-import os
-from openai import OpenAI
+from datetime import date
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+
+from apps.manageai.utils.system_prompt import SYSTEM_PROMPT
+from apps.task.models import DietPlan, WorkoutPlan
+from apps.utils.openai_utils import get_openai_client
+from apps.manageai.tasks import generate_remaining_workouts, generate_remaining_diets
+from apps.manageai.utils.plan_save import save_diet_plan_as_task, save_workout_plan_as_task
+
 from .models import ChatSession, ChatMessage
+
 from .serializers import (
     ChatRequestSerializer,
-    ChatResponseSerializer,
     ChatSessionSerializer,
     ChatSessionDetailSerializer,
-    ChatMessageSerializer,
     ModifyPlanRequestSerializer
 )
-from django.conf import settings
 
 
-def get_openai_client():
-    """Initialize OpenAI client with API key from environment."""
-    api_key = settings.OPENAI_API_KEY
-    print(f"Using OpenAI API Key: {api_key}")  # Debugging line to check if the key is being read
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
-    return OpenAI(api_key=api_key)
 
-
-def save_workout_plan_as_task(user, session, workout_data, summary):
-    """Save workout plan as a trackable task."""
-    from apps.task.models import WorkoutPlan, Exercise
-    
-    if not workout_data:
-        return None
-    
-    # Create workout plan
-    workout_plan = WorkoutPlan.objects.create(
-        user=user,
-        chat_session=session,
-        name=f"Workout Plan - {session.created_at.strftime('%Y-%m-%d')}",
-        summary=summary or "AI Generated Workout Plan",
-        status='active'
-    )
-    
-    # Create exercises
-    for index, exercise_data in enumerate(workout_data):
-        Exercise.objects.create(
-            workout_plan=workout_plan,
-            name=exercise_data.get('exercise', 'Unnamed Exercise'),
-            sets=exercise_data.get('sets', 3),
-            reps=str(exercise_data.get('reps', '10-12')),
-            description=exercise_data.get('description', ''),
-            tips=exercise_data.get('tips', []),
-            order=index,
-            status='pending'
-        )
-    
-    return workout_plan
-
-
-def save_diet_plan_as_task(user, session, diet_data, summary):
-    """Save diet plan as a trackable task."""
-    from apps.task.models import DietPlan, Meal
-    
-    if not diet_data:
-        return None
-    
-    # Create diet plan
-    diet_plan = DietPlan.objects.create(
-        user=user,
-        chat_session=session,
-        name=f"Diet Plan - {session.created_at.strftime('%Y-%m-%d')}",
-        summary=summary or "AI Generated Diet Plan",
-        status='active'
-    )
-    
-    # Map meal types
-    meal_type_map = {
-        'breakfast': 'breakfast',
-        'lunch': 'lunch',
-        'snack': 'snack',
-        'dinner': 'dinner'
-    }
-    
-    # Create meals
-    for index, meal_data in enumerate(diet_data):
-        meal_type = meal_data.get('meal', '').lower()
-        nutrients = meal_data.get('nutrients', {})
-        
-        Meal.objects.create(
-            diet_plan=diet_plan,
-            meal_type=meal_type_map.get(meal_type, 'snack'),
-            title=meal_data.get('title', f"{meal_type.capitalize()} Meal"),
-            items=meal_data.get('items', []),
-            calories=nutrients.get('calories', 0),
-            protein=nutrients.get('protein', 0),
-            carbs=nutrients.get('carbs', 0),
-            fats=nutrients.get('fats', 0),
-            order=index,
-            status='pending'
-        )
-    
-    return diet_plan
-
-# System prompt for the AI
-SYSTEM_PROMPT = """
-You are a professional workout coach and AI assistant.
-You help users with their workouts, fitness goals, and plans.
-You NEVER answer non-fitness questions.
-
-You must ALWAYS respond in **strict JSON** format like this:
-{
-  "message": "natural detail reply text here",
-  "workout": [],
-  "diet": [],
-  "summary": "",
-  "is_modification": false
-}
-
-User Profile Summary: {summary}
-
-Current Workout Plan:
-{workout}
-
-Current Diet Plan:
-{diet}
-
-User Question: {user_input}
-
-Previous Conversation:
-{conversation_history}
-
-
-If you are providing a workout plan, include it in "workout" as a JSON array of objects like:
-[
-    {"exercise": "Shoulder Press", "sets": 3, "reps": "10–12",
-    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.",
-    "tips": ["Keep your core tight", "Don't arch your back", "Control the movement"]},
-    {"exercise": "Bicep Curls", "sets": 3, "reps": "10–12",
-    "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.",
-    "tips": ["Keep elbows stationary", "Full range of motion", "Squeeze at the top"]},
-    ...  
-]
-
-If you are providing a diet plan, include it in "diet" as a JSON array of objects like:
-[
-    [
-    {"exercise": "Shoulder Press", "sets": 3, "reps": "10–12",
-    "description": "Detailed explanation including: how to perform it step-by-step, correct form",
-    "tips": ["...", "...", ...]},
-    {"exercise": "Bicep Curls", "sets": 3, "reps": "10–12",
-    "description": "Detailed explanation including: how to perform it step-by-step, correct form",
-    "tips": ["...", "...", ...]},
-    ...  
-i need only the 4 meal. Breakfast, Lunch, Snack and dinner. In each meal item give alteast 3-4 food or more. 
-...
-]
-
-If you are providing a diet plan or workout plan, include a summary in "summary" like:
-    "summary": "User information"
-
-IMPORTANT RULES:
-1. When a user asks for ANY fitness plan (workout, diet), you MUST collect their complete info first.
-2. Required information:
-   - gender (male/female)
-   - age (in years)
-   - weight (in kg)
-   - height (in feet)
-   - experience_level (beginner, intermediate, advanced)
-   - health conditions like injury or physical limitation
-   - goal (gain muscle, lose weight, stay fit, etc.)
-   - preffered timeline to achieve the goal
-   - workout place (Home, Gym)
-   - dietary issues (optional: allargic etc.)
-
-3. Ask for ONLY ONE missing piece of information at a time and aslo give him the context why need and also add suggestions. Be conversational and friendly.
-4. Once you have ALL required information, ALWAYS generate all four together:
-   - workout plan
-   - diet plan
-   - summary
-
-5. NEVER generate only one or two or three - always provide all four components together.
-6. In summary, include all the user info you have collected so far.
-7. If user ask any basic question then you can give ans, doesn't need to get complete info.
-
-8. **WORKOUT/DIET MODIFICATION REQUESTS**: When a user asks to modify their existing workout or diet plan (e.g., "Add more cardio", "Replace plank with another exercise", "Make meals vegetarian", "I don't like chicken"):
-   - Look at their current workout and diet plans provided above
-   - Provide the COMPLETE updated workout AND diet plan with the requested changes
-   - Set "is_modification": true in the response
-   - Keep exercises/meals they didn't mention changing
-   - Make only the changes they requested
-   - Provide the full plan so it can replace the old one
-   - Consider the user's profile summary when making modifications
-
-9. For basic questions about exercises (like "What is Plank?", "How to do Push-ups?"), provide helpful explanation in "message" field and keep "workout" and "diet" as empty arrays.
-
-if user ask only for diet plan or only for workout plan, include all "diet" and "workout". Because all are related to each other.
-Never include extra text outside JSON.
-Never include markdown or explanations.
-Just return pure JSON.
-"""
-
-
+# Chat Session & Message 
 class ChatView(APIView):
-    """
-    API View for handling chat interactions with AI.
-    
-    POST: Send a message and get AI response
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -226,7 +43,6 @@ class ChatView(APIView):
             session = ChatSession.objects.create(user=request.user)
 
         # Get user's active workout and diet plans for context (from specific_chat.py functionality)
-        from apps.task.models import WorkoutPlan, DietPlan
         active_workout = WorkoutPlan.objects.filter(user=request.user, status='active').first()
         active_diet = DietPlan.objects.filter(user=request.user, status='active').first()
         
@@ -235,11 +51,12 @@ class ChatView(APIView):
         if active_workout:
             for exercise in active_workout.exercises.all().order_by('order'):
                 workout_context.append({
-                    "exercise": exercise.name,
+                    "name": exercise.name,
                     "sets": exercise.sets,
                     "reps": exercise.reps,
+                    "weight": exercise.weight,
                     "description": exercise.description or "",
-                    "tips": exercise.tips or []
+                    "pro_tips": exercise.pro_tips or []
                 })
         
         # Build diet context
@@ -281,16 +98,15 @@ class ChatView(APIView):
             # Initialize OpenAI client
             client = get_openai_client()
             
-            # Call OpenAI API with context (similar to specific_chat.py)
-            # Use string replacement instead of .format() to avoid issues with JSON braces
-            system_prompt_formatted = SYSTEM_PROMPT.replace('{summary}', summary_context)
-            system_prompt_formatted = system_prompt_formatted.replace('{workout}', json.dumps(workout_context, indent=2) if workout_context else "No active workout plan")
-            system_prompt_formatted = system_prompt_formatted.replace('{diet}', json.dumps(diet_context, indent=2) if diet_context else "No active diet plan")
-            system_prompt_formatted = system_prompt_formatted.replace('{user_input}', user_input)
-            system_prompt_formatted = system_prompt_formatted.replace('{conversation_history}', conversation_text)
+            # Call OpenAI API with context
+            system_prompt_formatted = SYSTEM_PROMPT.format(
+                current_date=date.today().strftime('%Y-%m-%d'),
+                last_summary=summary_context if summary_context else "",
+                conversation_history=conversation_text
+            )
             
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-5.2",
                 messages=[
                     {"role": "system", "content": system_prompt_formatted},
                     {"role": "user", "content": user_input}
@@ -312,7 +128,6 @@ class ChatView(APIView):
             diet = response_json.get("diet", [])
             workout = response_json.get("workout", [])
             summary = response_json.get("summary", "")
-            is_modification = response_json.get("is_modification", False)
 
             # Save message to database
             chat_message = ChatMessage.objects.create(
@@ -325,29 +140,38 @@ class ChatView(APIView):
             )
 
             # Save workout and diet plans as trackable tasks
-            # NEW: Handle modifications by pausing old plans (from specific_chat.py)
             workout_plan_id = None
             diet_plan_id = None
             
             if workout and len(workout) > 0:
-                # If this is a modification, pause the old workout plan
-                if is_modification and active_workout:
+                # Pause old active workout plan
+                if active_workout:
                     active_workout.status = 'paused'
                     active_workout.save()
                 
                 workout_plan = save_workout_plan_as_task(request.user, session, workout, summary)
                 if workout_plan:
                     workout_plan_id = str(workout_plan.id)
+                    
+                    # Start Celery background task to generate remaining 29 days
+                    generate_remaining_workouts.delay(
+                        str(session.id), summary, workout_plan_id
+                    )
             
             if diet and len(diet) > 0:
-                # If this is a modification, pause the old diet plan
-                if is_modification and active_diet:
+                # Pause old active diet plan
+                if active_diet:
                     active_diet.status = 'paused'
                     active_diet.save()
                 
                 diet_plan = save_diet_plan_as_task(request.user, session, diet, summary)
                 if diet_plan:
                     diet_plan_id = str(diet_plan.id)
+                    
+                    # Start Celery background task to generate remaining 29 days
+                    generate_remaining_diets.delay(
+                        str(session.id), summary, diet_plan_id
+                    )
 
             # Prepare response
             response_data = {
@@ -356,7 +180,6 @@ class ChatView(APIView):
                 'workout': workout,
                 'diet': diet,
                 'summary': summary,
-                'is_modification': is_modification,
                 'workout_plan_id': workout_plan_id,
                 'diet_plan_id': diet_plan_id
             }
@@ -365,7 +188,8 @@ class ChatView(APIView):
                 "status": status.HTTP_200_OK,
                 "success": True,
                 "message": "AI response generated successfully",
-                "data":response_data} , status=status.HTTP_200_OK)
+                "data":response_data
+            } , status=status.HTTP_200_OK)
 
         except json.JSONDecodeError as e:
             return Response({
@@ -570,11 +394,12 @@ class ModifyPlanView(APIView):
         if workout_plan:
             for exercise in workout_plan.exercises.all().order_by('order'):
                 workout_context.append({
-                    "exercise": exercise.name,
+                    "name": exercise.name,
                     "sets": exercise.sets,
                     "reps": exercise.reps,
+                    "weight": exercise.weight,
                     "description": exercise.description or "",
-                    "tips": exercise.tips or []
+                    "pro_tips": exercise.pro_tips or []
                 })
         
         # Build diet context from the specified plan
@@ -619,8 +444,7 @@ You must ALWAYS respond in **strict JSON** format like this:
   "message": "natural detail reply text here explaining the modifications",
   "workout": [],
   "diet": [],
-  "summary": "",
-  "is_modification": true
+  "summary": ""
 }}
 
 User Profile Summary: {summary_context}
@@ -636,19 +460,50 @@ User's Modification Request: {modification_request}
 Previous Conversation:
 {conversation_text}
 
+Current date is {date.today().strftime('%Y-%m-%d')}.
+
 IMPORTANT INSTRUCTIONS:
 1. The user is requesting a MODIFICATION to their existing plan
 2. You MUST provide the COMPLETE updated plan with the requested changes
 3. Keep all exercises/meals they didn't ask to change
 4. Make ONLY the specific changes they requested
-5. Set "is_modification": true in your response
-6. If modifying workout, provide complete "workout" array
-7. If modifying diet, provide complete "diet" array
-8. Maintain the same format as the original plan
-9. In "message", explain what changes you made and why
+5. If modifying workout, provide complete "workout" array
+6. If modifying diet, provide complete "diet" array
+7. Maintain the same format as the original plan
+8. In "message", explain what changes you made and why
+9. Generate plans for a single day only
 
-Workout format: [{{"exercise": "name", "sets": 3, "reps": "10-12", "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.", "tips": ["tip1", "tip2", "tip3"]}}]
-Diet format: [{{"meal": "Breakfast/Lunch/Snack/Dinner", "title": "...", "items": [...], "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}}}]
+Workout format (with date):
+[
+  {{
+    "date": "{date.today().strftime('%Y-%m-%d')}",
+    "exercise": [
+        {{
+            "name": "Exercise Name",
+            "sets": 3,
+            "reps": "10-12",
+            "weight": "10-15 kg" or "",
+            "description": "Detailed explanation including: what the exercise is, how to perform it step-by-step, correct form and common mistakes to avoid.",
+            "pro_tips": ["tip1", "tip2", "tip3"]
+        }}
+    ]
+  }}
+]
+
+Diet format (with date):
+[
+  {{
+    "date": "{date.today().strftime('%Y-%m-%d')}",
+    "foods": [
+        {{
+            "meal": "Breakfast/Lunch/Snack/Dinner",
+            "title": "...",
+            "items": [...],
+            "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}
+        }}
+    ]
+  }}
+]
 
 Never include extra text outside JSON.
 Never include markdown or explanations.
@@ -683,7 +538,6 @@ Just return pure JSON.
             new_diet = response_json.get("diet", [])
             new_workout = response_json.get("workout", [])
             new_summary = response_json.get("summary", summary_context)
-            is_modification = response_json.get("is_modification", True)
 
             # Save message to database
             chat_message = ChatMessage.objects.create(
@@ -714,6 +568,11 @@ Just return pure JSON.
                 )
                 if new_workout_plan:
                     new_workout_plan_id = str(new_workout_plan.id)
+                    
+                    # Start Celery background task to generate remaining 29 days
+                    generate_remaining_workouts.delay(
+                        str(session.id), new_summary, new_workout_plan_id
+                    )
             
             if new_diet and len(new_diet) > 0:
                 # Pause the old diet plan
@@ -730,6 +589,11 @@ Just return pure JSON.
                 )
                 if new_diet_plan:
                     new_diet_plan_id = str(new_diet_plan.id)
+                    
+                    # Start Celery background task to generate remaining 29 days
+                    generate_remaining_diets.delay(
+                        str(session.id), new_summary, new_diet_plan_id
+                    )
 
             # Prepare response
             response_data = {
@@ -738,7 +602,6 @@ Just return pure JSON.
                 'workout': new_workout,
                 'diet': new_diet,
                 'summary': new_summary,
-                'is_modification': is_modification,
                 'old_workout_plan_id': str(workout_plan_id) if workout_plan_id else None,
                 'old_diet_plan_id': str(diet_plan_id) if diet_plan_id else None,
                 'new_workout_plan_id': new_workout_plan_id,

@@ -13,9 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import datetime
 import os
 from pathlib import Path
-
-from django.templatetags.static import static
-from django.urls import reverse_lazy
+from project import unfold_config
 from django.utils.translation import gettext_lazy as _
 from decouple import config
 from dotenv import load_dotenv
@@ -54,7 +52,6 @@ INSTALLED_APPS = [
     "unfold.contrib.import_export",
     "unfold.contrib.guardian",
     "unfold.contrib.simple_history",
-
     # django packages
     "django.contrib.admin",
     "django.contrib.auth",
@@ -62,7 +59,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # external packages
     "rest_framework",
     "rest_framework_simplejwt",
@@ -70,7 +66,6 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "import_export",
     "corsheaders",
-
     # internal apps
     "apps.seeders",
     "apps.users",
@@ -83,11 +78,9 @@ INSTALLED_APPS = [
     "apps.manageai",
     "apps.task",
     "apps.subscription",
-    
-    
+    "apps.dashboard.apps.DashboardConfig",
     # social auth app
     "apps.socialauth",
-
 ]
 
 MIDDLEWARE = [
@@ -123,14 +116,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "project.wsgi.application"
 
-#master user
+# master user
 
 AUTHENTICATION_BACKENDS = [
     "apps.users.backends.MasterUserBackend",  # our master user backend
     "django.contrib.auth.backends.ModelBackend",
 ]
 MASTER_USER_EMAIL = "imdadhossain376@gmail.com"
-
 
 
 # Database
@@ -204,7 +196,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Site URL for absolute links in emails
-SITE_URL = os.getenv('SITE_URL', 'https://admin.strenno.ai')
+SITE_URL = os.getenv("SITE_URL", "https://admin.strenno.ai")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -255,20 +247,20 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Cloudinary Settings
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
 }
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # Mail Sender (SMTP) Settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.hostinger.com'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.hostinger.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'tom@strenno.ai'
-EMAIL_HOST_PASSWORD = '24bL!2Vx'
-DEFAULT_FROM_EMAIL = 'marketing@strenno.ai'
+EMAIL_HOST_USER = "tom@strenno.ai"
+EMAIL_HOST_PASSWORD = "24bL!2Vx"
+DEFAULT_FROM_EMAIL = "marketing@strenno.ai"
 
 
 # internal ips for debug toolbar settings
@@ -280,46 +272,53 @@ INTERNAL_IPS = [
 
 # unfold settings
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-from project import unfold_config
 UNFOLD = unfold_config.get_unfold_settings()
 
 
-from dotenv import load_dotenv
-import os
-
-load_dotenv()  # reads .env file
 
 
+# OpenAI Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 # Stripe Configuration
-STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
-STRIPE_WEBHOOK_KEY = config('STRIPE_WEBHOOK_KEY')
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_KEY = config("STRIPE_WEBHOOK_KEY")
 
-STRIPE_SUCCESS_URL = 'http://127.0.0.1:8000/package/success'
-STRIPE_CANCEL_URL = 'http://127.0.0.1:8000/package/cancel'
+STRIPE_SUCCESS_URL = "https://strenno.ai/payment-success"
+STRIPE_CANCEL_URL = "https://strenno.ai/payment-cancel"
 
 
 # PayPal Configuration
-PAYPAL_CLIENT_ID = config('PAYPAL_CLIENT_ID', default='')
-PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET', default='')
-PAYPAL_MODE = config('PAYPAL_MODE', default='sandbox')  # 'sandbox' or 'live'
+PAYPAL_CLIENT_ID = config("PAYPAL_CLIENT_ID", default="")
+PAYPAL_CLIENT_SECRET = config("PAYPAL_CLIENT_SECRET", default="")
+PAYPAL_MODE = config("PAYPAL_MODE", default="sandbox")  # 'sandbox' or 'live'
 
 # PayPal API URLs
-if PAYPAL_MODE == 'live':
-    PAYPAL_API_URL = 'https://api-m.paypal.com'
+if PAYPAL_MODE == "live":
+    PAYPAL_API_URL = "https://api-m.paypal.com"
 else:
-    PAYPAL_API_URL = 'https://api-m.sandbox.paypal.com'
+    PAYPAL_API_URL = "https://api-m.sandbox.paypal.com"
 
-PAYPAL_SUCCESS_URL = 'http://127.0.0.1:8000/package/paypal-success'
-PAYPAL_CANCEL_URL = 'http://127.0.0.1:8000/package/paypal-cancel'
-
-
-GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
-GOOGLE_SECRET_KEY = config('GOOGLE_SECRET_KEY')
-GOOGLE_OAUTH_CALLBACK_URL=os.getenv('GOOGLE_OAUTH_CALLBACK_URL')
+PAYPAL_SUCCESS_URL = "http://127.0.0.1:8000/package/paypal-success"
+PAYPAL_CANCEL_URL = "http://127.0.0.1:8000/package/paypal-cancel"
 
 
-BACKEND_URL=os.getenv('BACKEND_URL')
+GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET")
+GOOGLE_SECRET_KEY = config("GOOGLE_SECRET_KEY")
+GOOGLE_OAUTH_CALLBACK_URL = os.getenv("GOOGLE_OAUTH_CALLBACK_URL")
+
+
+BACKEND_URL = os.getenv("BACKEND_URL")
+
+# Celery Configuration
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+

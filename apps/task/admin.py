@@ -1,15 +1,15 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from .models import WorkoutPlan, Exercise, DietPlan, Meal, DailyProgress, WorkoutReview
 
 
-class ExerciseInline(admin.TabularInline):
+class ExerciseInline(TabularInline):
     model = Exercise
     extra = 0
-    fields = ('name', 'sets', 'reps', 'description', 'tips', 'completed_sets', 'status', 'order')
+    fields = ('name', 'sets', 'reps', 'description', 'pro_tips', 'completed_sets', 'status', 'order')
 
 
-class MealInline(admin.TabularInline):
+class MealInline(TabularInline):
     model = Meal
     extra = 0
     fields = ('meal_type', 'title', 'calories', 'protein', 'carbs', 'fats', 'status', 'order')
@@ -20,7 +20,7 @@ class WorkoutPlanAdmin(ModelAdmin):
     list_display = ('name', 'user', 'status', 'progress_percentage', 'total_exercises', 'start_date', 'created_at')
     list_filter = ('status', 'start_date', 'created_at')
     search_fields = ('name', 'user__email', 'summary')
-    readonly_fields = ('id', 'progress_percentage', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'progress_percentage', 'start_date', 'total_exercises', 'completed_exercises', 'created_at', 'updated_at')
     inlines = [ExerciseInline]
     
     fieldsets = (
@@ -38,10 +38,10 @@ class WorkoutPlanAdmin(ModelAdmin):
 
 @admin.register(Exercise)
 class ExerciseAdmin(ModelAdmin):
-    list_display = ('name', 'workout_plan', 'sets', 'reps', 'completed_sets', 'status', 'completion_percentage')
-    list_filter = ('status', 'created_at')
-    search_fields = ('name', 'description', 'workout_plan__name', 'workout_plan__user__email')
-    readonly_fields = ('id', 'completion_percentage', 'created_at', 'updated_at')
+    list_display = ('name', 'workout_plan', 'sets', 'reps', 'weight', 'completed_sets', 'status', 'exercise_type', 'date')
+    list_filter = ('status', 'weight', 'created_at', 'exercise_type')
+    search_fields = ('id', 'name', 'description', 'workout_plan__name', 'workout_plan__user__email', 'exercise_type')
+    readonly_fields = ('id', 'created_at', 'updated_at')
 
 
 @admin.register(DietPlan)
@@ -67,9 +67,9 @@ class DietPlanAdmin(ModelAdmin):
 
 @admin.register(Meal)
 class MealAdmin(ModelAdmin):
-    list_display = ('title', 'meal_type', 'diet_plan', 'calories', 'protein', 'carbs', 'fats', 'status')
-    list_filter = ('meal_type', 'status', 'created_at')
-    search_fields = ('title', 'diet_plan__name', 'diet_plan__user__email')
+    list_display = ('title', 'meal_type', 'diet_plan', 'status', 'calories', 'protein', 'carbs', 'fats', 'status', 'date')
+    list_filter = ('meal_type', 'status', 'created_at', 'date')
+    search_fields = ('id', 'title', 'diet_plan__name', 'diet_plan__user__email')
     readonly_fields = ('id', 'created_at', 'updated_at')
 
 
