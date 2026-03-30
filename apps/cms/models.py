@@ -322,7 +322,7 @@ class FAQ(models.Model):
     class Meta:
         verbose_name = "FAQ"
         verbose_name_plural = "FAQs"
-        ordering = ['-order']
+        ordering = ['order']
 
 
 class WebsiteContentManager(models.Model):
