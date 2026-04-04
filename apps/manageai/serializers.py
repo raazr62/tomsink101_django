@@ -88,6 +88,8 @@ class ModifyPlanRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField(required=False, allow_null=True)
     workout_plan_id = serializers.UUIDField(required=False, allow_null=True)
     diet_plan_id = serializers.UUIDField(required=False, allow_null=True)
+    exercise_id = serializers.UUIDField(required=False, allow_null=True)  # For updating specific exercise
+    meal_id = serializers.UUIDField(required=False, allow_null=True)  # For updating specific meal
     modification_request = serializers.CharField(required=True, allow_blank=False)
     
     def validate_modification_request(self, value):
@@ -96,8 +98,12 @@ class ModifyPlanRequestSerializer(serializers.Serializer):
         return value.strip()
     
     def validate(self, data):
-        if not data.get('workout_plan_id') and not data.get('diet_plan_id'):
+        # Allow either plan-level or specific exercise/meal-level updates
+        has_plan = data.get('workout_plan_id') or data.get('diet_plan_id')
+        has_specific = data.get('exercise_id') or data.get('meal_id')
+        
+        if not has_plan and not has_specific:
             raise serializers.ValidationError(
-                "At least one of workout_plan_id or diet_plan_id must be provided."
+                "At least one of: workout_plan_id, diet_plan_id, exercise_id, or meal_id must be provided."
             )
         return data

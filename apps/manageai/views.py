@@ -181,7 +181,8 @@ class ChatView(APIView):
                 'diet': diet,
                 'summary': summary,
                 'workout_plan_id': workout_plan_id,
-                'diet_plan_id': diet_plan_id
+                'diet_plan_id': diet_plan_id,
+                'plane_generated': True if workout_plan_id or diet_plan_id else False
             }
 
             return Response({
@@ -353,11 +354,16 @@ class ModifyPlanView(APIView):
     
     POST: Send modification request to modify workout/diet plans
     
-    This endpoint allows users to request modifications to their existing plans
-    by providing natural language requests like:
+    This endpoint allows users to request modifications to their existing plans.
+    Can update at two levels:
+    1. Entire plan: Provide workout_plan_id or diet_plan_id (creates new plan)
+    2. Specific exercise/meal: Provide exercise_id or meal_id (updates in place)
+    
+    Examples:
     - "Add more cardio exercises"
     - "Replace chicken with fish"
     - "Make the workout easier"
+    - "Add more weight to this exercise"
     """
     permission_classes = [IsAuthenticated]
 
@@ -370,6 +376,8 @@ class ModifyPlanView(APIView):
         session_id = serializer.validated_data.get('session_id')
         workout_plan_id = serializer.validated_data.get('workout_plan_id')
         diet_plan_id = serializer.validated_data.get('diet_plan_id')
+        exercise_id = serializer.validated_data.get('exercise_id')
+        meal_id = serializer.validated_data.get('meal_id')
 
         # Get or create chat session
         if session_id:
@@ -377,9 +385,21 @@ class ModifyPlanView(APIView):
         else:
             session = ChatSession.objects.create(user=request.user)
 
-        # Get the specific plans to modify
-        from apps.task.models import WorkoutPlan, DietPlan
-        
+        from apps.task.models import WorkoutPlan, DietPlan, Exercise, Meal
+
+        # **CASE 1: Update specific exercise in place**
+        if exercise_id:
+            return self._update_specific_exercise(
+                request, session, exercise_id, modification_request
+            )
+
+        # **CASE 2: Update specific meal in place**
+        if meal_id:
+            return self._update_specific_meal(
+                request, session, meal_id, modification_request
+            )
+
+        # **CASE 3: Update entire plan (original behavior - creates new plan)**
         workout_plan = None
         diet_plan = None
         
@@ -622,6 +642,361 @@ Just return pure JSON.
                 "error": "Failed to parse AI response",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "error": "An error occurred",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _update_specific_exercise(self, request, session, exercise_id, modification_request):
+        """Update a specific exercise in the database without creating a new plan."""
+        from apps.task.models import Exercise
+        
+        try:
+            # Get the specific exercise
+            exercise = Exercise.objects.select_related('workout_plan').get(id=exercise_id)
+            
+            # Verify the user owns this exercise's workout plan
+            if exercise.workout_plan.user != request.user:
+                return Response({
+                    "status": status.HTTP_403_FORBIDDEN,
+                    "success": False,
+                    "error": "You don't have permission to modify this exercise",
+                    "details": "Exercise doesn't belong to your workout plan"
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            workout_plan = exercise.workout_plan
+            
+            # Build context for just this exercise
+            exercise_context = {
+                "name": exercise.name,
+                "sets": exercise.sets,
+                "reps": exercise.reps,
+                "weight": exercise.weight,
+                "description": exercise.description or "",
+                "pro_tips": exercise.pro_tips or [],
+                "date": str(exercise.date) if exercise.date else "N/A"
+            }
+            
+            # Get workout plan summary
+            summary_context = workout_plan.summary or "AI Generated Workout Plan"
+            
+            # Build conversation context from session
+            conversation_text = ""
+            previous_messages = session.messages.all()
+            for msg in previous_messages:
+                conversation_text += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
+            
+            if not conversation_text:
+                conversation_text = "No previous conversation"
+            
+            # Create system prompt for single exercise modification
+            modification_prompt = f"""
+You are a professional workout coach and AI assistant.
+The user wants to MODIFY their existing workout EXERCISE.
+
+You must ALWAYS respond in **strict JSON** format like this:
+{{
+  "message": "natural detail reply text here explaining the modifications",
+  "exercise": {{
+    "name": "Exercise Name",
+    "sets": 3,
+    "reps": "10-12",
+    "weight": "10-15 kg" or "",
+    "description": "Detailed explanation",
+    "pro_tips": ["tip1", "tip2"]
+  }}
+}}
+
+User Profile Summary: {summary_context}
+
+CURRENT Exercise to Modify:
+{json.dumps(exercise_context, indent=2)}
+
+User's Modification Request: {modification_request}
+
+Previous Conversation:
+{conversation_text}
+
+IMPORTANT INSTRUCTIONS:
+1. The user is requesting a MODIFICATION to a SINGLE exercise
+2. Return ONLY the modified exercise data
+3. Make ONLY the specific changes requested
+4. Keep all fields from the original exercise (name, description, etc.)
+5. In "message", explain what changes you made and why
+6. Be specific and detailed in the exercise description
+
+Never include extra text outside JSON.
+Just return pure JSON.
+"""
+            
+            # Initialize OpenAI client
+            client = get_openai_client()
+            
+            # Call OpenAI API
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": modification_prompt},
+                    {"role": "user", "content": modification_request}
+                ],
+                temperature=0.7,
+            )
+
+            ai_reply = response.choices[0].message.content.strip()
+
+            # Clean markdown code blocks if present
+            ai_reply = re.sub(r'^```json\s*', '', ai_reply)
+            ai_reply = re.sub(r'^```\s*', '', ai_reply)
+            ai_reply = re.sub(r'\s*```$', '', ai_reply)
+            ai_reply = ai_reply.strip()
+
+            # Parse JSON response
+            response_json = json.loads(ai_reply)
+            ai_message = response_json.get("message", "")
+            modified_exercise = response_json.get("exercise", {})
+
+            # Save message to database
+            chat_message = ChatMessage.objects.create(
+                session=session,
+                user_message=modification_request,
+                ai_message=ai_message,
+                workout=None,
+                diet=None,
+                summary=None
+            )
+
+            # Update the exercise in place
+            if modified_exercise:
+                exercise.name = modified_exercise.get('name', exercise.name)
+                exercise.sets = modified_exercise.get('sets', exercise.sets)
+                exercise.reps = str(modified_exercise.get('reps', exercise.reps))
+                exercise.weight = modified_exercise.get('weight', exercise.weight) or ''
+                exercise.description = modified_exercise.get('description', exercise.description)
+                exercise.pro_tips = modified_exercise.get('pro_tips', exercise.pro_tips or [])
+                exercise.updated_at = date.today()
+                exercise.save()
+
+            # Prepare response
+            response_data = {
+                'session_id': str(session.id),
+                'message': ai_message,
+                'exercise_id': str(exercise.id),
+                'workout_plan_id': str(workout_plan.id),
+                'updated_exercise': {
+                    'id': str(exercise.id),
+                    'name': exercise.name,
+                    'sets': exercise.sets,
+                    'reps': exercise.reps,
+                    'weight': exercise.weight,
+                    'description': exercise.description,
+                    'pro_tips': exercise.pro_tips,
+                    'date': str(exercise.date) if exercise.date else None
+                }
+            }
+
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "Exercise updated successfully",
+                "data": response_data
+            }, status=status.HTTP_200_OK)
+
+        except json.JSONDecodeError as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "error": "Failed to parse AI response",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exercise.DoesNotExist:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "error": "Exercise not found",
+                "details": f"No exercise with ID {exercise_id} exists"
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "error": "An error occurred",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _update_specific_meal(self, request, session, meal_id, modification_request):
+        """Update a specific meal in the database without creating a new plan."""
+        from apps.task.models import Meal
+        
+        try:
+            # Get the specific meal
+            meal = Meal.objects.select_related('diet_plan').get(id=meal_id)
+            
+            # Verify the user owns this meal's diet plan
+            if meal.diet_plan.user != request.user:
+                return Response({
+                    "status": status.HTTP_403_FORBIDDEN,
+                    "success": False,
+                    "error": "You don't have permission to modify this meal",
+                    "details": "Meal doesn't belong to your diet plan"
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            diet_plan = meal.diet_plan
+            
+            # Build context for just this meal
+            meal_context = {
+                "meal": meal.meal_type,
+                "title": meal.title,
+                "items": meal.items,
+                "nutrients": {
+                    "calories": meal.calories,
+                    "protein": meal.protein,
+                    "carbs": meal.carbs,
+                    "fats": meal.fats
+                },
+                "date": str(meal.date) if meal.date else "N/A"
+            }
+            
+            # Get diet plan summary
+            summary_context = diet_plan.summary or "AI Generated Diet Plan"
+            
+            # Build conversation context from session
+            conversation_text = ""
+            previous_messages = session.messages.all()
+            for msg in previous_messages:
+                conversation_text += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
+            
+            if not conversation_text:
+                conversation_text = "No previous conversation"
+            
+            # Create system prompt for single meal modification
+            modification_prompt = f"""
+You are a professional nutrition coach and AI assistant.
+The user wants to MODIFY their existing MEAL.
+
+You must ALWAYS respond in **strict JSON** format like this:
+{{
+  "message": "natural detail reply text here explaining the modifications",
+  "meal": {{
+    "title": "Meal Title",
+    "items": ["item1", "item2", ...],
+    "nutrients": {{"calories": 400, "protein": 30, "carbs": 50, "fats": 10}}
+  }}
+}}
+
+User Profile Summary: {summary_context}
+
+CURRENT Meal to Modify:
+{json.dumps(meal_context, indent=2)}
+
+User's Modification Request: {modification_request}
+
+Previous Conversation:
+{conversation_text}
+
+IMPORTANT INSTRUCTIONS:
+1. The user is requesting a MODIFICATION to a SINGLE meal
+2. Return ONLY the modified meal data
+3. Make ONLY the specific changes requested
+4. Keep the meal type ({meal.meal_type}) unless user specifies otherwise
+5. In "message", explain what changes you made and why
+6. Provide realistic nutritional values
+
+Never include extra text outside JSON.
+Just return pure JSON.
+"""
+            
+            # Initialize OpenAI client
+            client = get_openai_client()
+            
+            # Call OpenAI API
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": modification_prompt},
+                    {"role": "user", "content": modification_request}
+                ],
+                temperature=0.7,
+            )
+
+            ai_reply = response.choices[0].message.content.strip()
+
+            # Clean markdown code blocks if present
+            ai_reply = re.sub(r'^```json\s*', '', ai_reply)
+            ai_reply = re.sub(r'^```\s*', '', ai_reply)
+            ai_reply = re.sub(r'\s*```$', '', ai_reply)
+            ai_reply = ai_reply.strip()
+
+            # Parse JSON response
+            response_json = json.loads(ai_reply)
+            ai_message = response_json.get("message", "")
+            modified_meal = response_json.get("meal", {})
+
+            # Save message to database
+            chat_message = ChatMessage.objects.create(
+                session=session,
+                user_message=modification_request,
+                ai_message=ai_message,
+                workout=None,
+                diet=None,
+                summary=None
+            )
+
+            # Update the meal in place
+            if modified_meal:
+                meal.title = modified_meal.get('title', meal.title)
+                meal.items = modified_meal.get('items', meal.items)
+                nutrients = modified_meal.get('nutrients', {})
+                meal.calories = nutrients.get('calories', meal.calories)
+                meal.protein = nutrients.get('protein', meal.protein)
+                meal.carbs = nutrients.get('carbs', meal.carbs)
+                meal.fats = nutrients.get('fats', meal.fats)
+                meal.save()
+
+            # Prepare response
+            response_data = {
+                'session_id': str(session.id),
+                'message': ai_message,
+                'meal_id': str(meal.id),
+                'diet_plan_id': str(diet_plan.id),
+                'updated_meal': {
+                    'id': str(meal.id),
+                    'meal_type': meal.meal_type,
+                    'title': meal.title,
+                    'items': meal.items,
+                    'nutrients': {
+                        'calories': meal.calories,
+                        'protein': meal.protein,
+                        'carbs': meal.carbs,
+                        'fats': meal.fats
+                    },
+                    'date': str(meal.date) if meal.date else None
+                }
+            }
+
+            return Response({
+                "status": status.HTTP_200_OK,
+                "success": True,
+                "message": "Meal updated successfully",
+                "data": response_data
+            }, status=status.HTTP_200_OK)
+
+        except json.JSONDecodeError as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "success": False,
+                "error": "Failed to parse AI response",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Meal.DoesNotExist:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "success": False,
+                "error": "Meal not found",
+                "details": f"No meal with ID {meal_id} exists"
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
