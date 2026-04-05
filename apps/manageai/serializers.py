@@ -11,7 +11,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 # Chat Session
 class ChatSessionSerializer(serializers.ModelSerializer):
-    messages = ChatMessageSerializer(many=True, read_only=True)
+    messages = serializers.SerializerMethodField()
     message_count = serializers.SerializerMethodField()
     workout_plans_count = serializers.SerializerMethodField()
     diet_plans_count = serializers.SerializerMethodField()
@@ -22,8 +22,13 @@ class ChatSessionSerializer(serializers.ModelSerializer):
                   'workout_plans_count', 'diet_plans_count']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
+    def get_messages(self, obj):
+        # Return only chat messages
+        chat_messages = obj.messages.filter(message_type='chat')
+        return ChatMessageSerializer(chat_messages, many=True).data
+    
     def get_message_count(self, obj):
-        return obj.messages.count()
+        return obj.messages.filter(message_type='chat').count()
     
     def get_workout_plans_count(self, obj):
         return obj.workout_plans.count()
@@ -33,7 +38,7 @@ class ChatSessionSerializer(serializers.ModelSerializer):
 
 # Chat Session Detail 
 class ChatSessionDetailSerializer(serializers.ModelSerializer):
-    messages = ChatMessageSerializer(many=True, read_only=True)
+    messages = serializers.SerializerMethodField()
     message_count = serializers.SerializerMethodField()
     workout_plans = serializers.SerializerMethodField()
     diet_plans = serializers.SerializerMethodField()
@@ -44,8 +49,13 @@ class ChatSessionDetailSerializer(serializers.ModelSerializer):
                   'workout_plans', 'diet_plans']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
+    def get_messages(self, obj):
+        # Return only chat messages
+        chat_messages = obj.messages.filter(message_type='chat')
+        return ChatMessageSerializer(chat_messages, many=True).data
+    
     def get_message_count(self, obj):
-        return obj.messages.count()
+        return obj.messages.filter(message_type='chat').count()
     
     def get_workout_plans(self, obj):
         from apps.task.serializers import WorkoutPlanSerializer
