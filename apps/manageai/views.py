@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from apps.manageai.utils.system_prompt import SYSTEM_PROMPT
-from apps.task.models import DietPlan, WorkoutPlan
+from apps.task.models import DietPlan, WorkoutPlan, Exercise
 from apps.utils.openai_utils import get_openai_client
 from apps.manageai.tasks import generate_remaining_workouts, generate_remaining_diets
 from apps.manageai.utils.plan_save import save_diet_plan_as_task, save_workout_plan_as_task
@@ -85,9 +85,9 @@ class ChatView(APIView):
         elif active_diet and active_diet.summary:
             summary_context = active_diet.summary
 
-        # Build conversation context from previous messages
+        # Build conversation context from previous messages (chat messages only)
         conversation_text = ""
-        previous_messages = session.messages.all()
+        previous_messages = session.messages.filter(message_type='chat')
         for msg in previous_messages:
             conversation_text += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
         
@@ -136,7 +136,8 @@ class ChatView(APIView):
                 ai_message=ai_message,
                 workout=workout if workout else None,
                 diet=diet if diet else None,
-                summary=summary if summary else None
+                summary=summary if summary else None,
+                message_type='chat'
             )
 
             # Save workout and diet plans as trackable tasks
@@ -209,11 +210,6 @@ class ChatView(APIView):
 
 
 class ChatSessionListView(APIView):
-    """
-    API View for listing all chat sessions for the authenticated user.
-    
-    GET: List all sessions
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -228,12 +224,6 @@ class ChatSessionListView(APIView):
 
 
 class ChatSessionDetailView(APIView):
-    """
-    API View for retrieving a specific chat session with all messages.
-    
-    GET: Retrieve session details
-    DELETE: Delete a session
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, session_id):
@@ -258,11 +248,6 @@ class ChatSessionDetailView(APIView):
 
 
 class LastChatSessionView(APIView):
-    """
-    API View for retrieving the user's most recent chat session.
-    
-    GET: Retrieve last session with all messages
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -349,22 +334,7 @@ class ChatSessionPlansView(APIView):
 
 
 class ModifyPlanView(APIView):
-    """
-    API View for modifying existing workout and diet plans.
-    
-    POST: Send modification request to modify workout/diet plans
-    
-    This endpoint allows users to request modifications to their existing plans.
-    Can update at two levels:
-    1. Entire plan: Provide workout_plan_id or diet_plan_id (creates new plan)
-    2. Specific exercise/meal: Provide exercise_id or meal_id (updates in place)
-    
-    Examples:
-    - "Add more cardio exercises"
-    - "Replace chicken with fish"
-    - "Make the workout easier"
-    - "Add more weight to this exercise"
-    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -385,21 +355,20 @@ class ModifyPlanView(APIView):
         else:
             session = ChatSession.objects.create(user=request.user)
 
-        from apps.task.models import WorkoutPlan, DietPlan, Exercise, Meal
 
-        # **CASE 1: Update specific exercise in place**
+        # CASE 1: Update specific exercise in place**
         if exercise_id:
             return self._update_specific_exercise(
                 request, session, exercise_id, modification_request
             )
 
-        # **CASE 2: Update specific meal in place**
+        # CASE 2: Update specific meal in place**
         if meal_id:
             return self._update_specific_meal(
                 request, session, meal_id, modification_request
             )
 
-        # **CASE 3: Update entire plan (original behavior - creates new plan)**
+        # CASE 3: Update entire plan (original behavior - creates new plan)**
         workout_plan = None
         diet_plan = None
         
@@ -445,9 +414,9 @@ class ModifyPlanView(APIView):
         elif diet_plan and diet_plan.summary:
             summary_context = diet_plan.summary
 
-        # Build conversation context from previous messages in session
+        # Build conversation context from previous messages in session (modification messages only)
         conversation_text = ""
-        previous_messages = session.messages.all()
+        previous_messages = session.messages.filter(message_type='modification')
         for msg in previous_messages:
             conversation_text += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
         
@@ -566,7 +535,8 @@ Just return pure JSON.
                 ai_message=ai_message,
                 workout=new_workout if new_workout else None,
                 diet=new_diet if new_diet else None,
-                summary=new_summary if new_summary else None
+                summary=new_summary if new_summary else None,
+                message_type='modification'
             )
 
             # Pause old plans and create new modified plans
@@ -650,9 +620,8 @@ Just return pure JSON.
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    # update the specific exercise
     def _update_specific_exercise(self, request, session, exercise_id, modification_request):
-        """Update a specific exercise in the database without creating a new plan."""
-        from apps.task.models import Exercise
         
         try:
             # Get the specific exercise
@@ -683,9 +652,9 @@ Just return pure JSON.
             # Get workout plan summary
             summary_context = workout_plan.summary or "AI Generated Workout Plan"
             
-            # Build conversation context from session
+            # Build conversation context from session (modification messages only)
             conversation_text = ""
-            previous_messages = session.messages.all()
+            previous_messages = session.messages.filter(message_type='modification')
             for msg in previous_messages:
                 conversation_text += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
             
@@ -765,7 +734,8 @@ Just return pure JSON.
                 ai_message=ai_message,
                 workout=None,
                 diet=None,
-                summary=None
+                summary=None,
+                message_type='modification'
             )
 
             # Update the exercise in place
@@ -862,9 +832,9 @@ Just return pure JSON.
             # Get diet plan summary
             summary_context = diet_plan.summary or "AI Generated Diet Plan"
             
-            # Build conversation context from session
+            # Build conversation context from session (modification messages only)
             conversation_text = ""
-            previous_messages = session.messages.all()
+            previous_messages = session.messages.filter(message_type='modification')
             for msg in previous_messages:
                 conversation_text += f"User: {msg.user_message}\nAI: {msg.ai_message}\n"
             
@@ -941,7 +911,8 @@ Just return pure JSON.
                 ai_message=ai_message,
                 workout=None,
                 diet=None,
-                summary=None
+                summary=None,
+                message_type='modification'
             )
 
             # Update the meal in place
