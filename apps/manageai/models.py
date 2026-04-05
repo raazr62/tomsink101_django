@@ -23,6 +23,11 @@ class ChatSession(models.Model):
 
 # Chat Message
 class ChatMessage(models.Model):
+    MESSAGE_TYPE_CHOICES = [
+        ('chat', 'Chat'),
+        ('modification', 'Modification'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session = models.ForeignKey(
         ChatSession,
@@ -34,6 +39,7 @@ class ChatMessage(models.Model):
     workout = models.JSONField(null=True, blank=True)
     diet = models.JSONField(null=True, blank=True)
     summary = models.TextField(null=True, blank=True)
+    message_type = models.CharField(max_length=20, choices=MESSAGE_TYPE_CHOICES, default='chat')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
