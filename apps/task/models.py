@@ -78,7 +78,7 @@ class Exercise(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['order', '-created_at']
