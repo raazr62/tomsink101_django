@@ -41,7 +41,7 @@ class ExerciseAdmin(ModelAdmin):
     list_display = ('name', 'workout_plan', 'sets', 'reps', 'weight', 'completed_sets', 'status', 'exercise_type', 'date')
     list_filter = ('status', 'weight', 'name', 'created_at', 'exercise_type')
     search_fields = ('id', 'name', 'description', 'workout_plan__name', 'workout_plan__user__email', 'exercise_type')
-    readonly_fields = ('id', 'created_at', 'updated_at')
+    readonly_fields = ('id',)
 
 
 @admin.register(DietPlan)
