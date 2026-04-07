@@ -6,6 +6,7 @@ from .views import (
     MyPlanStatsView,
     BodyWeightView,
     CoachInsightsView,
+    StrengthGraphView,
 
     
     
@@ -31,6 +32,7 @@ urlpatterns = [
     path("my-plan/stats/", MyPlanStatsView.as_view(), name="my-plan-stats"),
     path("achievements/cards/", UserAchievementsView.as_view(), name="achievement-cards"),
     path("achievements/records/", PersonalRecordsView.as_view(), name="achievement-progress"),
+    path("strength/graph/", StrengthGraphView.as_view(), name="strength-graph"),
     
 
 

@@ -568,6 +568,7 @@ class DailyWorkoutDetailView(APIView):
                     'name': exercise.name,
                     'sets': exercise.sets,
                     'reps': exercise.reps,
+                    'weight': exercise.weight,
                     'description': exercise.description,
                     'tips': exercise.pro_tips or [],
                     'completed_sets': exercise.completed_sets,

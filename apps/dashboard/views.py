@@ -1,3 +1,4 @@
+import re
 from django.shortcuts import render, HttpResponse
 from apps.system_setting.models import SystemColor
 from apps.task.models import Exercise, WorkoutPlan
@@ -852,8 +853,74 @@ class CoachInsightsView(APIView):
                 "data": None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# Strength Graph
+class StrengthGraphView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        try:
+            user = request.user
+            exercise = request.data.get("exercise")
 
+            if not exercise:
+                return Response({
+                    "status": 400,
+                    "success": False,
+                    "message": "Exercise query parameter is required",
+                    "data": None
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Filter only completed exercises of the user for this exercise
+            strength_data = Exercise.objects.filter(
+                workout_plan__user=user,
+                name__icontains=exercise,  # flexible search
+                status="completed"
+            ).order_by("updated_at")
+
+            data = []
+
+            for entry in strength_data:
+                # Check if weight and reps exist
+                if entry.weight and entry.reps:
+                    try:
+                        # Extract numbers from weight string (handle ranges like "45–70" or "45-70")
+                        numbers = re.findall(r'\d+', str(entry.weight))
+                        if len(numbers) == 0:
+                            continue  # skip if no valid number
+                        # Use average of range if multiple numbers
+                        weight = sum(int(n) for n in numbers) / len(numbers)
+
+                        reps_numbers = re.findall(r'\d+', str(entry.reps))
+                        reps = sum(int(n) for n in reps_numbers) / len(reps_numbers)
+
+                        # Epley formula
+                        epley = weight * (1 + reps / 30)
+
+                        data.append({
+                            "date": entry.updated_at.date(),
+                            "estimated_1RM": round(epley, 2),
+                            "weight": weight,
+                            "reps": reps
+                        })
+
+                    except (ValueError, TypeError):
+                        # Skip invalid entries
+                        continue
+
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "Strength graph data fetched successfully",
+                "data": data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "success": False,
+                "message": f"An error occurred: {str(e)}",
+                "data": None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Admin Dashboard
@@ -861,9 +928,9 @@ def dashboard_callback(request, context):
     now = timezone.now()
 
     start_of_month = now.replace(day=1)
-    total_subscribers = 20
-    total_new_subscriptions = 5
-    total_income = 1000
+    total_subscribers = 0
+    total_new_subscriptions = 0
+    total_income = 0
 
     if now.month == 12:
         start_of_next_month = now.replace(year=now.year + 1, month=1, day=1)
