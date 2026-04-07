@@ -2,6 +2,7 @@ import re
 from django.shortcuts import render, HttpResponse
 from apps.system_setting.models import SystemColor
 from apps.task.models import Exercise, WorkoutPlan
+from apps.task.serializers import ExerciseSerializer
 from apps.users.models import User
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -853,6 +854,45 @@ class CoachInsightsView(APIView):
                 "data": None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# All Exercises
+class ExerciseListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            exercise = request.query_params.get("exercise")
+
+            # Base queryset (all exercises for the user)
+            all_exercises = Exercise.objects.filter(
+                workout_plan__user=user
+            )
+
+            # Apply filter only if param is provided
+            if exercise:
+                all_exercises = all_exercises.filter(
+                    name__icontains=exercise
+                )
+
+            all_exercises = all_exercises.order_by("-updated_at")
+
+            data = [{"name": entry.name} for entry in all_exercises]
+
+            return Response({
+                "status": 200,
+                "success": True,
+                "message": "Exercises fetched successfully",
+                "data": data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "success": False,
+                "message": f"An error occurred: {str(e)}",
+                "data": None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Strength Graph
 class StrengthGraphView(APIView):
     permission_classes = [IsAuthenticated]
@@ -860,7 +900,7 @@ class StrengthGraphView(APIView):
     def get(self, request):
         try:
             user = request.user
-            exercise = request.data.get("exercise")
+            exercise = request.query_params.get("exercise")
 
             if not exercise:
                 return Response({
@@ -874,7 +914,6 @@ class StrengthGraphView(APIView):
             strength_data = Exercise.objects.filter(
                 workout_plan__user=user,
                 name__icontains=exercise,  # flexible search
-                status="completed"
             ).order_by("updated_at")
 
             data = []
