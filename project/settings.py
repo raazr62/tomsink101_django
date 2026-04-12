@@ -322,3 +322,18 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 
+# Redis Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': config('REDIS_CACHE_URL', default='redis://127.0.0.1:6379/1'),
+        'OPTIONS': {
+            'socket_connect_timeout': 5,
+            'socket_timeout': 5,
+            'retry_on_timeout': True,
+        },
+        'KEY_PREFIX': 'cms_cache',
+        'TIMEOUT': 24 * 60 * 60,  # 24 hours default cache timeout
+    }
+}
+
