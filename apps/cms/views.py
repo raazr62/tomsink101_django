@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.core.cache import cache
 
 from apps.cms.models import (
     HeroSection, LegalDocument, SuccessStoriesSection, AICoachSection, 
@@ -17,12 +18,25 @@ from apps.cms.serializers import (
     ContactSerializer, HelpSupportSerializer, 
 )
 
+from apps.cms.cache_utils import CMS_DATA_CACHE_KEY
+
 # CMS 
 class CompleteCMSDataView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
         try:
+            # Try to get cached data first
+            cached_data = cache.get(CMS_DATA_CACHE_KEY)
+            if cached_data is not None:
+                return Response({
+                    'status': status.HTTP_200_OK,
+                    'success': True,
+                    'message': 'CMS data retrieved successfully',
+                    'data': cached_data
+                }, status=status.HTTP_200_OK)
+            
+            # If not cached, fetch from database
             # Get all active hero sections with their goals
             hero_sections = HeroSection.objects.filter(status=True).prefetch_related('goals').order_by('order')
             
@@ -91,6 +105,9 @@ class CompleteCMSDataView(APIView):
                 #     'imprint': PageSerializer(pages_grouped['imprint']).data if pages_grouped['imprint'] else None,
                 # }
             }
+            
+            # Cache the data for 24 hours
+            cache.set(CMS_DATA_CACHE_KEY, data, 24 * 60 * 60)
             
             return Response({
                 'status': status.HTTP_200_OK,
