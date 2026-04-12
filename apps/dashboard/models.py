@@ -7,7 +7,6 @@ from cloudinary.models import CloudinaryField
 # Create your models here.
 
 class FitnessGoal(models.Model):
-    """User's fitness goal tracking (e.g., 12-week program)"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='fitness_goals')
     title = models.CharField(max_length=200, default="Fitness Journey")
     total_weeks = models.IntegerField(default=12)
