@@ -38,7 +38,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]  # Accept all hosts temporarily
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 
 # Application definition
