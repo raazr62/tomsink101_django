@@ -21,7 +21,10 @@ from django.db.models import Prefetch
 
 
 User = get_user_model()
-stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+def _set_stripe_api_key():
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 # PayPal Helper Functions
@@ -121,6 +124,7 @@ class SubscriptionCreate(APIView):
     
     def post(self, request, package_id):
         user = request.user
+        _set_stripe_api_key()
         
         try:
             package = Package.objects.get(id=package_id)
@@ -222,6 +226,27 @@ class SubscriptionCreate(APIView):
                     'message': 'Subscription updated successfully.',
                     'data': SubscriptionSerializer(new_subscription).data
                 }, status=status.HTTP_200_OK)
+            except stripe.error.InvalidRequestError as e:
+                # Common when switching Stripe accounts or test/live keys:
+                # DB still contains a Price ID that doesn't exist in the current Stripe account.
+                if 'No such price' in str(e):
+                    return Response({
+                        'status': status.HTTP_400_BAD_REQUEST,
+                        'success': False,
+                        'message': 'This package references a Stripe Price ID that does not exist in the current Stripe account (or mode). Re-sync the package in Stripe.',
+                        'error': str(e),
+                        'data': {
+                            'package_id': str(package.id),
+                            'package_name': package.name,
+                            'stripe_price_id': package.stripe_price_id,
+                        }
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'status': status.HTTP_400_BAD_REQUEST,
+                    'success': False,
+                    'message': 'Failed to update subscription.',
+                    'error': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
             except stripe.error.StripeError as e:
                 return Response({
                     'status': status.HTTP_400_BAD_REQUEST,
@@ -260,7 +285,26 @@ class SubscriptionCreate(APIView):
                         'cancel_url': settings.STRIPE_CANCEL_URL,
                     }
                 }, status=status.HTTP_200_OK)
-            except stripe.error.StripeError as e:
+            except stripe.error.InvalidRequestError as e:
+                if 'No such price' in str(e):
+                    return Response({
+                        'status': status.HTTP_400_BAD_REQUEST,
+                        'success': False,
+                        'message': 'This package references a Stripe Price ID that does not exist in the current Stripe account (or mode). Re-sync the package in Stripe.',
+                        'error': str(e),
+                        'data': {
+                            'package_id': str(package.id),
+                            'package_name': package.name,
+                            'stripe_price_id': package.stripe_price_id,
+                        }
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'status': status.HTTP_400_BAD_REQUEST,
+                    'success': False,
+                    'message': 'Failed to create checkout session.',
+                    'error': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+            except stripe._error.StripeError as e:
                 return Response({
                     'status': status.HTTP_400_BAD_REQUEST,
                     'success': False,
@@ -273,6 +317,7 @@ class SubscriptionCreate(APIView):
 @csrf_exempt
 def stripe_webhook_view(request):
     """Handle Stripe webhook events."""
+    _set_stripe_api_key()
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     endpoint_secret = settings.STRIPE_WEBHOOK_KEY
@@ -384,6 +429,7 @@ class CancelSubscription(APIView):
     def post(self, request, subscription_id):
         user = request.user
         subscription = get_object_or_404(Subscription, pk=subscription_id, user=user)
+        _set_stripe_api_key()
 
         try:
             if subscription.payment_method == 'stripe':
