@@ -8,8 +8,11 @@ from django.conf import settings
 import stripe
 import requests
 from base64 import b64encode
+import logging
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 # 30 Days free trial for new users
 @receiver(post_save, sender=User)
@@ -32,9 +35,6 @@ def grant_free_pro_trial(sender, instance, created, **kwargs):
         is_active=True,
         payment_method="free_trial",
     )
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
 
 # PayPal Helper Functions
 def get_paypal_access_token():
@@ -97,32 +97,46 @@ def paypal_api_request(method, endpoint, data=None, access_token=None):
 
 @receiver(post_save, sender=Package)
 def create_stripe_product(sender, instance, created, **kwargs):
-    """Create Stripe product and price if they don't exist."""
-    if created and not instance.stripe_product_id:
+    """Create Stripe product and/or price when missing.
+
+    Note: IDs are stored on the Package record. If you change Stripe accounts
+    (or switch test/live keys), existing stored IDs may no longer exist.
+    Clearing the IDs and saving the package will re-create them.
+    """
+    if not instance.stripe_product_id and not instance.stripe_price_id and not instance.discount_price:
+        # Nothing to sync for free/zero-priced packages
+        return
+
+    if not instance.stripe_product_id or not instance.stripe_price_id:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
         try:
-            stripe_product = stripe.Product.create(
-                name=instance.name,
-                description=instance.description or ""
-            )
-            instance.stripe_product_id = stripe_product.id
-            
-            stripe_price = stripe.Price.create(
-                product=instance.stripe_product_id,
-                currency='USD',
-                unit_amount=int(instance.discount_price * 100),
-                recurring={
-                    'interval': instance.interval,
-                }
-            )
-            instance.stripe_price_id = stripe_price.id
-            
-            # Save without triggering signals again
+            stripe_product_id = instance.stripe_product_id
+            stripe_price_id = instance.stripe_price_id
+
+            if not stripe_product_id:
+                stripe_product = stripe.Product.create(
+                    name=instance.name,
+                    description=instance.description or "",
+                )
+                stripe_product_id = stripe_product.id
+
+            if not stripe_price_id:
+                stripe_price = stripe.Price.create(
+                    product=stripe_product_id,
+                    currency='USD',
+                    unit_amount=int(instance.discount_price * 100),
+                    recurring={
+                        'interval': instance.interval,
+                    },
+                )
+                stripe_price_id = stripe_price.id
+
             Package.objects.filter(pk=instance.pk).update(
-                stripe_product_id=instance.stripe_product_id,
-                stripe_price_id=instance.stripe_price_id
+                stripe_product_id=stripe_product_id,
+                stripe_price_id=stripe_price_id,
             )
         except stripe.error.StripeError:
-            pass
+            logger.exception("Stripe sync failed for Package id=%s", instance.pk)
 
 
 @receiver(post_save, sender=Package)
@@ -209,6 +223,7 @@ def update_stripe_product(sender, instance, created, **kwargs):
         return
     
     try:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
         stripe_product = stripe.Product.retrieve(instance.stripe_product_id)
         
         # Update product name if changed
@@ -245,7 +260,7 @@ def update_stripe_product(sender, instance, created, **kwargs):
                     stripe_price_id=new_price.id
                 )
     except stripe.error.StripeError:
-        pass
+        logger.exception("Stripe update failed for Package id=%s", instance.pk)
 
 
 @receiver(post_save, sender=Package)
